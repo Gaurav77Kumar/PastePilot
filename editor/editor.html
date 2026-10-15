@@ -1,0 +1,135 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <title>PastePilot — Snippets</title>
+  <link rel="stylesheet" href="editor.css">
+</head>
+<body>
+  <header class="ed-header">
+    <div class="ed-header-left">
+      <div class="ed-logo">
+        <span class="ed-logo-mark">
+          <svg viewBox="0 0 24 24" width="15" height="15" fill="none">
+            <path d="M3 11.5 21 3l-6.5 18-3.2-7.3L3 11.5Z" fill="#fdfaf1"/>
+            <path d="M11.3 13.7 21 3l-9.7 10.7Z" fill="#fdfaf1" fill-opacity=".55"/>
+          </svg>
+        </span>
+        <span class="ed-logo-text">Paste<em>Pilot</em></span>
+      </div>
+      <nav class="ed-tabs">
+        <button id="tabSnippets" class="ed-tab active">Snippets</button>
+        <button id="tabDetails" class="ed-tab">My details</button>
+      </nav>
+    </div>
+    <div class="ed-actions" id="snippetActions">
+      <button id="newBtn" class="ed-btn ed-btn-primary">+ New snippet</button>
+    </div>
+  </header>
+
+  <main class="ed-main" id="snippetsMain">
+    <aside class="ed-sidebar">
+      <div class="ed-search-wrap">
+        <svg class="ed-search-icon" viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></svg>
+        <input id="search" type="text" placeholder="Search…">
+      </div>
+      <div id="sidebarList" class="ed-sidebar-list"></div>
+      <div class="ed-sidebar-foot">
+        <span class="ed-dot"></span>
+        <span id="countLabel"></span>
+      </div>
+    </aside>
+
+    <section class="ed-content" id="editorPane" hidden>
+      <div class="ed-form">
+        <label>Title
+          <input id="fTitle" type="text" placeholder="e.g. Home address (formatted)">
+        </label>
+
+        <label>Content
+          <div class="ed-toolbar">
+            <button class="ed-var" data-var="{{cursor}}" title="Caret lands here after fill">{{cursor}}</button>
+            <button class="ed-var" data-var="{{date}}">{{date}}</button>
+            <button class="ed-var" data-var="{{date+7}}">{{date+7}}</button>
+            <button class="ed-var" data-var="{{time}}">{{time}}</button>
+            <button class="ed-var" data-var="{{year}}">{{year}}</button>
+            <button class="ed-var" data-var="{{clipboard}}" title="Pastes your current clipboard">{{clipboard}}</button>
+            <button class="ed-var" data-var="{{url}}" title="URL of the page being filled">{{url}}</button>
+          </div>
+          <textarea id="fBody" rows="10" placeholder="The text that gets filled. Use the variable buttons above."></textarea>
+          <div class="ed-charcount"><span id="charCount">0</span> characters</div>
+        </label>
+
+        <div class="ed-grid2">
+          <label>Tags <span class="ed-sub">(comma separated)</span>
+            <input id="fTags" type="text" placeholder="address, jobs, support">
+          </label>
+          <label>Auto-fill keywords <span class="ed-sub">(for “Fill all”)</span>
+            <input id="fKeywords" type="text" placeholder="address, street, mailing">
+          </label>
+        </div>
+
+        <label>Show on sites <span class="ed-sub">(comma separated — blank = everywhere)</span>
+          <input id="fSites" type="text" placeholder="linkedin.com, docs.google.com, * ">
+        </label>
+
+        <div class="ed-form-actions">
+          <button id="saveBtn" class="ed-btn ed-btn-primary">Save snippet</button>
+          <button id="deleteBtn" class="ed-btn ed-btn-danger">Delete</button>
+          <span id="savedMsg" class="ed-saved" hidden>Saved ✓</span>
+        </div>
+      </div>
+    </section>
+
+    <section class="ed-content ed-empty-state" id="emptyPane">
+      <div class="ed-welcome">
+        <div class="ed-welcome-mark">
+          <svg viewBox="0 0 24 24" width="34" height="34" fill="none">
+            <path d="M3 11.5 21 3l-6.5 18-3.2-7.3L3 11.5Z" fill="#fff" fill-opacity=".95"/>
+            <path d="M11.3 13.7 21 3l-9.7 10.7Z" fill="#fff" fill-opacity=".6"/>
+          </svg>
+        </div>
+        <h2>Welcome to PastePilot</h2>
+        <p class="ed-welcome-sub">Fill the text you type every day — formatted addresses, job application
+           answers, support replies — directly into the web page you're on.</p>
+        <ol>
+          <li><b>Create a snippet</b> with the <span class="ed-kbd-pill">+ New snippet</span> button.</li>
+          <li><b>Assign it to sites</b> (optional) so it appears first on the pages that need it.</li>
+          <li>Click the <b>PastePilot icon</b> on any page — or press <kbd>Ctrl</kbd>+<kbd>Shift</kbd>+<kbd>S</kbd> — and pick a snippet to fill it in.</li>
+        </ol>
+        <div class="ed-privacy">
+          <svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
+          Everything stays in your browser. No accounts, no servers, no tracking.
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <main class="ed-main" id="detailsMain" hidden>
+    <section class="ed-content ed-details-content">
+      <div class="ed-form ed-details-form">
+        <div class="ed-details-intro">
+          <b>My details</b> — save once, then hit <span class="ed-kbd-pill">⚡ Fill form</span> in the popup
+          on any page. PastePilot matches these to form labels like "Full name", "Email", "GitHub", "LinkedIn".
+          Everything stays in your browser.
+        </div>
+        <div id="detailsFields" class="ed-details-grid"></div>
+
+        <div class="ed-custom-head">
+          <b>Custom fields</b>
+          <span class="ed-sub">— anything else you fill often, e.g. "Last previous company"</span>
+          <button id="addCustomBtn" class="ed-btn">+ Add field</button>
+        </div>
+        <div id="customFields" class="ed-custom-list"></div>
+
+        <div class="ed-form-actions">
+          <button id="saveProfileBtn" class="ed-btn ed-btn-primary">Save details</button>
+          <span id="profileSavedMsg" class="ed-saved" hidden>Saved ✓</span>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <script type="module" src="editor.js"></script>
+</body>
+</html>
