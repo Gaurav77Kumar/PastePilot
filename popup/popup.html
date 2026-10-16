@@ -1,0 +1,48 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <link rel="stylesheet" href="popup.css">
+</head>
+<body>
+  <header class="pp-header">
+    <div class="pp-logo">
+      <span class="pp-logo-mark">
+        <svg viewBox="0 0 24 24" width="13" height="13" fill="none">
+          <path d="M3 11.5 21 3l-6.5 18-3.2-7.3L3 11.5Z" fill="#fdfaf1"/>
+          <path d="M11.3 13.7 21 3l-9.7 10.7Z" fill="#fdfaf1" fill-opacity=".55"/>
+        </svg>
+      </span>
+      <span class="pp-logo-text">Paste<em>Pilot</em></span>
+    </div>
+    <div class="pp-header-actions">
+      <button id="fillAllBtn" class="pp-btn pp-btn-ghost" title="Auto-fill matching empty fields on this page">
+        <svg viewBox="0 0 24 24" width="12" height="12" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M13 2 4.5 13.5H11L10 22l8.5-11.5H12L13 2Z"/></svg>
+        Fill all
+      </button>
+      <button id="manageBtn" class="pp-icon-btn" title="Manage snippets">
+        <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 1 1-4 0v-.09a1.65 1.65 0 0 0-1-1.51 1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 1 1 0-4h.09a1.65 1.65 0 0 0 1.51-1 1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33h.01a1.65 1.65 0 0 0 1-1.51V3a2 2 0 1 1 4 0v.09a1.65 1.65 0 0 0 1 1.51h.01a1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82v.01a1.65 1.65 0 0 0 1.51 1H21a2 2 0 1 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1Z"/></svg>
+      </button>
+    </div>
+  </header>
+
+  <div class="pp-search-wrap">
+    <svg class="pp-search-icon" viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></svg>
+    <input id="search" type="text" placeholder="Search snippets…" autocomplete="off" spellcheck="false">
+    <span id="siteTag" class="pp-site-tag" title="Snippets shown for this site"></span>
+  </div>
+
+  <section class="pp-me" id="meCard"></section>
+
+  <main id="list" class="pp-list"></main>
+
+  <footer class="pp-footer">
+    <span class="pp-hint"><kbd>Ctrl</kbd>+<kbd>Shift</kbd>+<kbd>S</kbd> quick-pick on any page</span>
+    <span class="pp-count" id="footCount"></span>
+  </footer>
+
+  <div id="toast" class="pp-toast" hidden></div>
+
+  <script type="module" src="popup.js"></script>
+</body>
+</html>
