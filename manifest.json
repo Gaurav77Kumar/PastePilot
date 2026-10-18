@@ -1,0 +1,40 @@
+{
+  "manifest_version": 3,
+  "name": "PastePilot — Site-Aware Snippets",
+  "version": "1.0.0",
+  "description": "Clipboard snippets that know which site you're on. One-click fill of addresses, replies, and answers you paste every day.",
+  "minimum_chrome_version": "102",
+  "permissions": ["activeTab", "scripting", "storage"],
+  "action": {
+    "default_popup": "popup/popup.html",
+    "default_icon": {
+      "16": "assets/icons/icon16.png",
+      "32": "assets/icons/icon32.png",
+      "48": "assets/icons/icon48.png",
+      "128": "assets/icons/icon128.png"
+    }
+  },
+  "background": {
+    "service_worker": "background.js",
+    "type": "module"
+  },
+  "options_ui": {
+    "page": "editor/editor.html",
+    "open_in_tab": true
+  },
+  "commands": {
+    "quick-pick": {
+      "suggested_key": {
+        "default": "Ctrl+Shift+S",
+        "mac": "Command+Shift+S"
+      },
+      "description": "Open the quick-pick menu to insert a snippet"
+    }
+  },
+  "icons": {
+    "16": "assets/icons/icon16.png",
+    "32": "assets/icons/icon32.png",
+    "48": "assets/icons/icon48.png",
+    "128": "assets/icons/icon128.png"
+  }
+}

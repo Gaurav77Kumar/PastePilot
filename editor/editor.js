@@ -266,7 +266,7 @@ document.getElementById('addCustomBtn').addEventListener('click', () => {
   document.getElementById('customFields').appendChild(customFieldRow({}));
 });
 
-// Init ------------------------------------------------------------------------
+// Init
 
 let currentProfile = {};
 
