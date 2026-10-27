@@ -35,7 +35,7 @@ you're on, the right snippet is always at the top of the list.
 - **Private by design** — no accounts, no servers, no analytics. Data lives in
   your browser and follows you across devices through Chrome Sync
 
-Manifest V3 · vanilla JS · zero dependencies · no build step.
+
 
 ## Install
 
@@ -77,35 +77,3 @@ PastePilot collects **nothing**. It requests only `activeTab`, `scripting` and
 code. Snippets never leave your browser. Full policy:
 [docs/privacy-policy.md](docs/privacy-policy.md).
 
-## Development
-
-No dependencies to install — you only need Node 18+.
-
-```
-npm run check    # node --check every JS file
-npm test         # unit tests + store-readiness gates (manifest, icons, MV3 CSP)
-npm run package  # build dist/pastepilot-v<version>.zip for the Chrome Web Store
-npm run verify   # all three — this is what CI runs
-```
-
-```
-.github/   CI workflow (runs on every push/PR; v* tags publish a release zip)
-docs/      privacy policy (+ screenshots)
-lib/       storage, site rules, variables, page-fill engine, identity profile
-popup/     popup UI          editor/    snippet manager (options page)
-content/   in-page quick-pick overlay, injected on demand
-test/      local QA form (python -m http.server, then open /test/form.html)
-```
-
-CI gates are store-aware on purpose: the manifest's name/description limits,
-icon sizes, permission set and CSP rules are all asserted by tests, so a
-change that would get the extension rejected can't be pushed silently.
-`npm run package` produces a store-ready zip with `manifest.json` at the root
-and all development files excluded.
-
-## Versioning & releases
-
-1. Bump `version` in `manifest.json`
-2. Commit and tag: `git tag v1.0.1 && git push origin main --tags`
-3. CI builds the zip and attaches it to a GitHub Release automatically —
-   upload that zip in the [Developer Console](https://chrome.google.com/webstore/devconsole)
