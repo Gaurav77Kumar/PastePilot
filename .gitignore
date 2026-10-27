@@ -1,0 +1,8 @@
+# PastePilot repo
+node_modules/
+dist/
+*.zip
+*.crx
+*.pem
+.DS_Store
+Thumbs.db

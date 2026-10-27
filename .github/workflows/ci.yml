@@ -1,0 +1,65 @@
+# PastePilot CI — every push and PR must pass: syntax checks, unit tests,
+# store-readiness gates (manifest / icons / MV3 CSP), and a store-ready zip build.
+# Pushing a tag like v1.0.1 additionally attaches the zip to a GitHub Release.
+
+name: CI
+
+on:
+  push:
+  pull_request:
+
+jobs:
+  test:
+    name: Test & package
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+
+      - name: Syntax-check all extension JS
+        run: npm run check
+
+      - name: Run tests
+        run: npm test
+
+      - name: Build store-ready zip
+        run: npm run package
+
+      - name: Verify zip structure (manifest.json must be at the zip root)
+        run: |
+          unzip -l dist/pastepilot-v*.zip | grep -q "manifest.json" || {
+            echo "manifest.json missing from zip root"; exit 1; }
+          unzip -l dist/pastepilot-v*.zip | grep -q "assets/icons/icon128.png" || {
+            echo "icons missing from zip"; exit 1; }
+
+      - name: Upload zip artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: pastepilot-zip
+          path: dist/pastepilot-v*.zip
+          if-no-files-found: error
+
+  release:
+    name: Attach zip to GitHub Release
+    needs: test
+    if: startsWith(github.ref, 'refs/tags/v')
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+
+      - name: Re-verify before release
+        run: npm run check && npm test && npm run package
+
+      - name: Create GitHub Release with the zip
+        run: gh release create "$GITHUB_REF_NAME" dist/pastepilot-v*.zip --generate-notes
+        env:
+          GH_TOKEN: ${{ github.token }}

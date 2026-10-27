@@ -1,0 +1,44 @@
+<!DOCTYPE html>
+<html>
+<head><title>PastePilot Test Form</title>
+<style>
+  body { font-family: sans-serif; max-width: 560px; margin: 40px auto; }
+  label { display: block; margin: 14px 0 4px; font-weight: bold; }
+  input, textarea { width: 100%; padding: 8px; font-size: 14px; }
+  .ok { color: green; }
+</style>
+</head>
+<body>
+  <h1>Test form</h1>
+  <p>Click into a field, then use PastePilot (icon or Ctrl+Shift+S).</p>
+  <form id="f">
+    <label for="name">Full name</label>
+    <input id="name" name="full_name" type="text">
+    <label for="email">Email</label>
+    <input id="email" name="email" type="text">
+    <label for="phone">Phone number</label>
+    <input id="phone" name="phone" type="text">
+    <label for="github">GitHub</label>
+    <input id="github" name="github_url" type="text">
+    <label for="linkedin">LinkedIn profile</label>
+    <input id="linkedin" name="linkedin" type="text">
+    <label for="prevco">Last previous company</label>
+    <input id="prevco" name="previous_company" type="text">
+    <label for="addr">Street address</label>
+    <textarea id="addr" name="address" rows="3"></textarea>
+    <label for="reply">Your reply</label>
+    <textarea id="reply" name="reply" rows="4"></textarea>
+  </form>
+  <p id="status" class="ok"></p>
+  <script>
+    // Register that JS frameworks see our changes (the fill engine must trigger these)
+    ['name', 'addr', 'reply'].forEach((id) => {
+      const el = document.getElementById(id);
+      el.addEventListener('input', () => {
+        document.getElementById('status').textContent =
+          'input event fired on #' + id + ' ✓ value=' + JSON.stringify(el.value.slice(0, 40));
+      });
+    });
+  </script>
+</body>
+</html>
