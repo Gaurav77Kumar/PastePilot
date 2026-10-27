@@ -1,68 +1,111 @@
-# PastePilot — Site-Aware Snippets for Chrome
+<div align="center">
 
-**Clipboard snippets that know which site you're on.** One-click fill of the text you
-paste every day — formatted addresses, job-application answers, support replies —
-directly into the web page you're on.
+# ✈️ PastePilot — Site-Aware Snippets
 
-- No accounts, no servers, no analytics — data never leaves your browser
-- Requests only `activeTab`, `scripting`, `storage` — **no broad host permissions**
-- Vanilla JS, Manifest V3, zero dependencies, no build step
+**The text you paste every day, one click away — filled straight into the page you're on.**
 
-This folder is the whole project: the extension itself plus its tests, CI and
-packaging. Load it directly via `chrome://extensions` → **Load unpacked**.
+[![CI](https://github.com/Gaurav77Kumar/PastePilot/actions/workflows/ci.yml/badge.svg)](https://github.com/Gaurav77Kumar/PastePilot/actions/workflows/ci.yml)
 
-## Project layout
+![PastePilot My details — fill any form in one click](docs/screenshots/my-details.png)
 
-```
-manifest.json        Manifest V3 (activeTab, scripting, storage only)
-background.js        service worker: seeding, quick-pick command, usage persistence
-popup/               popup UI: search + per-site groups + click-to-fill
-editor/              full-page snippet manager (also the options page)
-content/quickpick.js in-page Ctrl+Shift+S menu (injected on demand)
-lib/                 storage, site rules, variables, page-fill engine, identity
-assets/icons/        16/32/48/128 px icons
-test/form.html       local test page for manual QA
-tests/               Node test suite (zero dependencies, node --test)
-scripts/             check.mjs (syntax gate) + package.mjs (store-ready zip)
-docs/                privacy policy (host on GitHub Pages for the store listing)
-.github/workflows/   CI: syntax + tests + packaging on every push/PR
-```
+Save your details and snippets once. PastePilot fills them into any form field —
+job applications, checkout addresses, support replies — without ever leaving the page.
 
-## Run it locally
+</div>
 
-1. Chrome → `chrome://extensions` → enable **Developer mode**
-2. **Load unpacked** → select this folder (the one with `manifest.json`)
-3. Click the PastePilot icon on any page (or press `Ctrl+Shift+S` in a form field)
+## Why PastePilot?
 
-## Tests & CI
+Every day you retype the same things: your address on checkout forms, the same
+answer on every job application, the same follow-up reply in support inboxes.
+PastePilot keeps that text one click away — and because it knows which site
+you're on, the right snippet is always at the top of the list.
+
+- **Site-aware snippets** — pin a snippet to `linkedin.com`, `*.google.com`, or any
+  domain; it shows first where it belongs and stays out of the way elsewhere
+- **My details** — save your name, email, phone, GitHub and LinkedIn once, then fill
+  whole forms in one click. Label matching understands "Full name", "Email",
+  "Notice period", custom fields — anything you name
+- **Quick-pick** — press <kbd>Ctrl</kbd>+<kbd>Shift</kbd>+<kbd>S</kbd> inside any field for an
+  in-page menu: type to filter, Enter to fill. Your caret lands exactly where
+  the snippet's `{{cursor}}` marker is
+- **Framework-safe** — filling uses native value setters and fires real `input`
+  events, so React, Vue and other JS forms register the change
+- **Template variables** — `{{date}}`, `{{date+7}}`, `{{time}}`, `{{year}}`,
+  `{{url}}`, `{{clipboard}}` and `{{cursor}}` resolve at fill time
+- **Private by design** — no accounts, no servers, no analytics. Data lives in
+  your browser and follows you across devices through Chrome Sync
+
+Manifest V3 · vanilla JS · zero dependencies · no build step.
+
+## Install
+
+**From the Chrome Web Store** — link added once review completes.
+
+**From source** (any Chromium browser):
+
+1. Download or clone this repo
+2. Open `chrome://extensions`, enable **Developer mode**
+3. **Load unpacked** → select this folder (the one containing `manifest.json`)
+4. Click the PastePilot icon on any page, or press <kbd>Ctrl</kbd>+<kbd>Shift</kbd>+<kbd>S</kbd> in a form field
+
+## How it works
+
+| Surface | What you do |
+|---|---|
+| **Popup** (icon click) | Search snippets, see what's relevant for the current site, click to fill the focused field — or hit **⚡ Fill form** to fill every matching empty field at once |
+| **Quick-pick** (<kbd>Ctrl</kbd>+<kbd>Shift</kbd>+<kbd>S</kbd>) | In-page overlay inside the field you're typing in; filter and Enter |
+| **Editor** (Manage / options page) | Create snippets, set tags, site rules and auto-fill keywords, manage custom detail fields |
+
+![The snippet editor](docs/screenshots/editor.png)
+
+### Template variables
+
+| Variable | Fills in |
+|---|---|
+| `{{date}}` | Today, in your locale format |
+| `{{date+7}}` / `{{date-1}}` | Date shifted by days |
+| `{{time}}` | Current time |
+| `{{year}}` | Four-digit year |
+| `{{url}}` / `{{title}}` | URL / title of the page being filled |
+| `{{clipboard}}` | Whatever is on your clipboard at fill time |
+| `{{cursor}}` | Where your caret lands after filling |
+
+## Privacy
+
+PastePilot collects **nothing**. It requests only `activeTab`, `scripting` and
+`storage` — no broad host permissions, no background page access, no remote
+code. Snippets never leave your browser. Full policy:
+[docs/privacy-policy.md](docs/privacy-policy.md).
+
+## Development
+
+No dependencies to install — you only need Node 18+.
 
 ```
 npm run check    # node --check every JS file
 npm test         # unit tests + store-readiness gates (manifest, icons, MV3 CSP)
-npm run package  # build dist/pastepilot-v<version>.zip (store files only)
-npm run verify   # all three
+npm run package  # build dist/pastepilot-v<version>.zip for the Chrome Web Store
+npm run verify   # all three — this is what CI runs
 ```
 
-Only Node 18+ required — no `npm install` needed. GitHub Actions runs
-`npm run verify` on every push and PR; pushing a tag `v1.2.3` attaches the zip
-to a GitHub Release.
-
-## Manual QA
-
-Serve the folder and open the test form:
-
 ```
-python -m http.server 8123
-# → http://127.0.0.1:8123/test/form.html
+.github/   CI workflow (runs on every push/PR; v* tags publish a release zip)
+docs/      privacy policy (+ screenshots)
+lib/       storage, site rules, variables, page-fill engine, identity profile
+popup/     popup UI          editor/    snippet manager (options page)
+content/   in-page quick-pick overlay, injected on demand
+test/      local QA form (python -m http.server, then open /test/form.html)
 ```
 
-Click into a field, then fill via the popup or `Ctrl+Shift+S`. The page logs
-when the framework-safe `input` event fires.
+CI gates are store-aware on purpose: the manifest's name/description limits,
+icon sizes, permission set and CSP rules are all asserted by tests, so a
+change that would get the extension rejected can't be pushed silently.
+`npm run package` produces a store-ready zip with `manifest.json` at the root
+and all development files excluded.
 
-## Ship it
+## Versioning & releases
 
-The store zip is built by `npm run package` (and by CI) with `manifest.json` at
-the zip root and all dev files excluded. Publishing steps, listing copy and
-permission justifications live in the project workspace `docs/` (see the
-publishing guide); the privacy policy in `docs/privacy-policy.md` should be
-hosted publicly (GitHub Pages) before submission.
+1. Bump `version` in `manifest.json`
+2. Commit and tag: `git tag v1.0.1 && git push origin main --tags`
+3. CI builds the zip and attaches it to a GitHub Release automatically —
+   upload that zip in the [Developer Console](https://chrome.google.com/webstore/devconsole)

@@ -148,7 +148,6 @@ document.querySelectorAll('.ed-var').forEach((btn) => {
   });
 });
 
-// My details view 
 
 const els2 = {
   snippetsMain: document.getElementById('snippetsMain'),
@@ -265,8 +264,6 @@ els2.saveProfileBtn.addEventListener('click', async () => {
 document.getElementById('addCustomBtn').addEventListener('click', () => {
   document.getElementById('customFields').appendChild(customFieldRow({}));
 });
-
-// Init
 
 let currentProfile = {};
 
