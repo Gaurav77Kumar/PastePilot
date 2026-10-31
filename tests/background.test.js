@@ -86,6 +86,7 @@ test('install registers the selection context menu', () => {
 
 test('context-menu click stores the capture and opens the editor', async () => {
   createdTabs.length = 0;
+  sessionMap.clear();
   await installed.onMenu[0](
     { menuItemId: 'pp-save-selection', selectionText: '  Hello world  ' },
     { id: 5, url: 'https://www.linkedin.com/jobs/1', title: 'Job posting' },
@@ -101,6 +102,7 @@ test('context-menu click stores the capture and opens the editor', async () => {
 
 test('context-menu click without selection text is ignored', async () => {
   createdTabs.length = 0;
+  sessionMap.clear();
   await installed.onMenu[0](
     { menuItemId: 'pp-save-selection', selectionText: '   ' },
     { id: 5, url: 'https://x.com' },
