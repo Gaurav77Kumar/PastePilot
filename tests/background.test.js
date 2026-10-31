@@ -1,15 +1,18 @@
 // Service worker behavior with a mocked chrome API: install seeding,
-// welcome-tab, quick-pick command injection, and the pp-usage message flow.
+// welcome-tab, quick-pick command injection, right-click capture, and the
+// pp-usage message flow.
 
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 
-const installed = { onInstalled: [], onCommand: [], onMessage: [] };
+const installed = { onInstalled: [], onCommand: [], onMessage: [], onMenu: [] };
 const createdTabs = [];
 const injections = [];
+const menusCreated = [];
 
 const syncMap = new Map();
 const localMap = new Map();
+const sessionMap = new Map();
 const area = (m) => ({
   get: async (keys) => {
     if (keys === null || keys === undefined) return Object.fromEntries(m);
@@ -30,12 +33,17 @@ const area = (m) => ({
 });
 
 globalThis.chrome = {
-  storage: { sync: area(syncMap), local: area(localMap) },
+  storage: { sync: area(syncMap), local: area(localMap), session: area(sessionMap) },
   runtime: {
     onInstalled: { addListener: (f) => installed.onInstalled.push(f) },
     onMessage: { addListener: (f) => installed.onMessage.push(f) }
   },
   commands: { onCommand: { addListener: (f) => installed.onCommand.push(f) } },
+  contextMenus: {
+    create: (opts) => menusCreated.push(opts),
+    removeAll: (cb) => { if (cb) cb(); },
+    onClicked: { addListener: (f) => installed.onMenu.push(f) }
+  },
   tabs: {
     query: async () => [{ id: 7, url: 'https://example.com/form', title: 'Form' }],
     create: async (opts) => { createdTabs.push(opts); }
@@ -48,10 +56,11 @@ globalThis.chrome = {
 const { readSnippets, writeSnippets } = await import('../lib/storage.js');
 await import('../background.js');
 
-test('service worker registers its three listeners', () => {
+test('service worker registers its listeners', () => {
   assert.equal(installed.onInstalled.length, 1);
   assert.equal(installed.onCommand.length, 1);
   assert.equal(installed.onMessage.length, 1);
+  assert.equal(installed.onMenu.length, 1);
 });
 
 test('install seeds snippets and opens the editor welcome page', async () => {
@@ -64,6 +73,50 @@ test('install seeds snippets and opens the editor welcome page', async () => {
 test('update does not re-open the welcome tab', async () => {
   createdTabs.length = 0;
   await installed.onInstalled[0]({ reason: 'update' });
+  assert.equal(createdTabs.length, 0);
+});
+
+test('install registers the selection context menu', () => {
+  assert.ok(menusCreated.length >= 1);
+  const menu = menusCreated[menusCreated.length - 1];
+  assert.equal(menu.id, 'pp-save-selection');
+  assert.deepEqual(menu.contexts, ['selection']);
+  assert.match(menu.title, /%s/);
+});
+
+test('context-menu click stores the capture and opens the editor', async () => {
+  createdTabs.length = 0;
+  await installed.onMenu[0](
+    { menuItemId: 'pp-save-selection', selectionText: '  Hello world  ' },
+    { id: 5, url: 'https://www.linkedin.com/jobs/1', title: 'Job posting' },
+    () => {}
+  );
+  const cap = sessionMap.get('pp_capture');
+  assert.equal(cap.text, 'Hello world');
+  assert.equal(cap.site, 'linkedin.com');
+  assert.equal(cap.page, 'Job posting');
+  assert.equal(createdTabs.length, 1);
+  assert.match(createdTabs[0].url, /editor\/editor\.html\?capture=1/);
+});
+
+test('context-menu click without selection text is ignored', async () => {
+  createdTabs.length = 0;
+  await installed.onMenu[0](
+    { menuItemId: 'pp-save-selection', selectionText: '   ' },
+    { id: 5, url: 'https://x.com' },
+    () => {}
+  );
+  assert.equal(createdTabs.length, 0);
+  assert.equal(sessionMap.has('pp_capture'), false);
+});
+
+test('other context-menu items are ignored', async () => {
+  createdTabs.length = 0;
+  await installed.onMenu[0](
+    { menuItemId: 'something-else', selectionText: 'text' },
+    { id: 5, url: 'https://x.com' },
+    () => {}
+  );
   assert.equal(createdTabs.length, 0);
 });
 

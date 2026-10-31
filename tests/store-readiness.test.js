@@ -45,7 +45,8 @@ test('name and description fit Chrome Web Store limits', () => {
 });
 
 test('permissions stay narrow: no broad hosts, no taboo APIs', () => {
-  const allowed = new Set(['activeTab', 'scripting', 'storage']);
+  // contextMenus: right-click "Save selection as snippet" — no host access.
+  const allowed = new Set(['activeTab', 'contextMenus', 'scripting', 'storage']);
   for (const p of manifest.permissions || []) {
     assert.ok(allowed.has(p), `unexpected permission "${p}" — justify it or drop it`);
   }

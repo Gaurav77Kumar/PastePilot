@@ -6,7 +6,7 @@
   "description": "Site-aware clipboard snippets for Chrome — vanilla JS, Manifest V3, zero dependencies, no build step.",
   "scripts": {
     "check": "node scripts/check.mjs",
-    "test": "node --test \"tests/**/*.test.js\"",
+    "test": "node --test tests/*.test.js",
     "package": "node scripts/package.mjs",
     "verify": "npm run check && npm test && npm run package"
   }
