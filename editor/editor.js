@@ -25,6 +25,41 @@ function uid() {
   return 'pp-' + Date.now().toString(36) + '-' + Math.random().toString(36).slice(2, 7);
 }
 
+// Auto-title for captured selections: first non-empty line, trimmed to 60 chars.
+function deriveTitle(text) {
+  const line = text.split('\n').map((t) => t.trim()).find(Boolean) || 'Captured snippet';
+  return line.length > 60 ? line.slice(0, 57) + '…' : line;
+}
+
+// Right-click capture: the service worker hands over the selection via
+// chrome.storage.session, then opens this page with ?capture=1. The new
+// snippet is created unsaved (dirty) so the user can adjust title/tags first.
+async function captureSelection() {
+  let cap = null;
+  try {
+    const o = await chrome.storage.session.get('pp_capture');
+    cap = o && o.pp_capture;
+    await chrome.storage.session.remove('pp_capture');
+  } catch (e) { cap = null; }
+  if (!cap || !cap.text || !cap.text.trim()) return;
+  const s = {
+    id: uid(),
+    title: deriveTitle(cap.text),
+    body: cap.text,
+    tags: [],
+    sites: [cap.site || '*'],
+    keywords: '',
+    usageCount: 0,
+    lastUsed: 0,
+    createdAt: Date.now()
+  };
+  snippets.unshift(s);
+  dirty = true;
+  selectSnippet(s.id);
+  els.fTitle.focus();
+  els.fTitle.select();
+}
+
 function currentSnippet() {
   return snippets.find((s) => s.id === currentId) || null;
 }
@@ -272,9 +307,12 @@ let currentProfile = {};
   currentProfile = await getProfile();
   renderSidebar();
   selectSnippet(null);
+  const params = new URLSearchParams(location.search);
   if (location.hash === '#details') {
     showView('details');
-  } else if (new URLSearchParams(location.search).get('welcome') === '1' && snippets.length) {
+  } else if (params.get('capture') === '1') {
+    await captureSelection();
+  } else if (params.get('welcome') === '1' && snippets.length) {
     selectSnippet(snippets[0].id);
   }
 })();

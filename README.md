@@ -28,6 +28,9 @@ you're on, the right snippet is always at the top of the list.
 - **Quick-pick** — press <kbd>Ctrl</kbd>+<kbd>Shift</kbd>+<kbd>S</kbd> inside any field for an
   in-page menu: type to filter, Enter to fill. Your caret lands exactly where
   the snippet's `{{cursor}}` marker is
+- **Capture from anywhere** — select text on any page, right-click → **"Save as a
+  PastePilot snippet"**: a pre-filled snippet opens in the editor with the
+  current site already set as its rule
 - **Framework-safe** — filling uses native value setters and fires real `input`
   events, so React, Vue and other JS forms register the change
 - **Template variables** — `{{date}}`, `{{date+7}}`, `{{time}}`, `{{year}}`,
@@ -54,6 +57,7 @@ you're on, the right snippet is always at the top of the list.
 |---|---|
 | **Popup** (icon click) | Search snippets, see what's relevant for the current site, click to fill the focused field — or hit **⚡ Fill form** to fill every matching empty field at once |
 | **Quick-pick** (<kbd>Ctrl</kbd>+<kbd>Shift</kbd>+<kbd>S</kbd>) | In-page overlay inside the field you're typing in; filter and Enter |
+| **Right-click capture** | Select text anywhere → context menu → a pre-filled snippet opens in the editor, unsaved until you confirm |
 | **Editor** (Manage / options page) | Create snippets, set tags, site rules and auto-fill keywords, manage custom detail fields |
 
 ![The snippet editor](docs/screenshots/editor.png)
@@ -72,8 +76,8 @@ you're on, the right snippet is always at the top of the list.
 
 ## Privacy
 
-PastePilot collects **nothing**. It requests only `activeTab`, `scripting` and
-`storage` — no broad host permissions, no background page access, no remote
-code. Snippets never leave your browser. Full policy:
+PastePilot collects **nothing**. It requests only `activeTab`, `contextMenus`,
+`scripting` and `storage` — no broad host permissions, no background page
+access, no remote code. Snippets never leave your browser. Full policy:
 [docs/privacy-policy.md](docs/privacy-policy.md).
 

@@ -4,7 +4,7 @@
   "version": "1.0.0",
   "description": "Clipboard snippets that know which site you're on. One-click fill of addresses, replies, and answers you paste every day.",
   "minimum_chrome_version": "102",
-  "permissions": ["activeTab", "scripting", "storage"],
+  "permissions": ["activeTab", "contextMenus", "scripting", "storage"],
   "action": {
     "default_popup": "popup/popup.html",
     "default_icon": {

@@ -19,6 +19,7 @@ PastePilot ("the extension") is built to keep your data entirely on your machine
 | Permission | Why it's needed |
 |---|---|
 | `activeTab` | To fill the field you're focused on, in the tab you clicked the PastePilot icon on. PastePilot cannot read or change any page **until you click its icon or use its keyboard shortcut**. |
+| `contextMenus` | To offer "Save selection as snippet" when you right-click selected text. The selected text is handed to PastePilot's own editor and stored only in your browser — it is never sent anywhere. |
 | `scripting` | To insert the fill action into the current page when you choose a snippet. |
 | `storage` | To save your snippets on your device. |
 
