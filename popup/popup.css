@@ -428,3 +428,19 @@ kbd {
   border: 3px solid var(--paper);
 }
 .pp-list::-webkit-scrollbar-thumb:hover { background: var(--ink-3); }
+
+/* {{ask:}} fill-in-the-blank form */
+.pp-ask-form { padding: 10px 14px 14px; }
+.pp-ask-head {
+  font-size: 9.5px; font-weight: 700; letter-spacing: .12em; text-transform: uppercase;
+  color: var(--ink-3);
+  margin-bottom: 2px;
+}
+.pp-ask-field { display: block; margin: 10px 0 0; font-size: 10.5px; font-weight: 600; color: var(--ink-2, #6d604a); }
+.pp-ask-field input {
+  display: block; width: 100%; box-sizing: border-box; margin-top: 4px;
+  padding: 8px 10px; border: 1px solid var(--card-edge); border-radius: 7px;
+  background: #fffdf6; color: var(--ink, #33291c); font-size: 13px; font-family: var(--serif);
+}
+.pp-ask-field input:focus { outline: none; border-color: #3a5a80; }
+.pp-ask-actions { display: flex; gap: 8px; margin-top: 12px; }

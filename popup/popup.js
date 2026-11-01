@@ -1,7 +1,7 @@
 // PastePilot — popup: search, per-site grouping, click-to-fill, fill-all.
 
 import { snippetsForSite, snippetMatchesSite, hostFromUrl } from '../lib/rules.js';
-import { resolveVars, splitCursor } from '../lib/variables.js';
+import { resolveVars, splitCursor, extractAsks, substituteAsks } from '../lib/variables.js';
 import { readSnippets, writeSnippets, getProfile } from '../lib/storage.js';
 import { PROFILE_FIELDS, CORE_PROFILE_KEYS, getCustomFields, customFieldKeywords } from '../lib/identity.js';
 import { PP_FILL_FN, PP_FILL_ALL_FN } from '../lib/pagefill.js';
@@ -54,7 +54,10 @@ function sortSnippets(snips) {
 function renderItem(s, onClick) {
   const div = document.createElement('div');
   div.className = 'pp-item';
-  const preview = s.body.replace(/\{\{\s*cursor\s*\}\}/gi, '').replace(/\s+/g, ' ').trim();
+  const preview = s.body
+    .replace(/\{\{\s*cursor\s*\}\}/gi, '')
+    .replace(/\{\{\s*ask\s*:[^}]*\}\}/gi, '[blank]')
+    .replace(/\s+/g, ' ').trim();
   const tags = (s.tags || []).slice(0, 3)
     .map((t) => `<span class="pp-tag">${esc(t)}</span>`).join('');
   div.innerHTML = `
@@ -125,6 +128,76 @@ async function getClipboard() {
   }
 }
 
+// ---- {{ask:...}} fill-in-the-blank prompts ---------------------------------
+
+async function getAskMemory() {
+  try {
+    const o = await chrome.storage.local.get('pp_ask_memory');
+    return (o && o.pp_ask_memory) || {};
+  } catch (e) {
+    return {};
+  }
+}
+
+async function rememberAsks(values) {
+  try {
+    const mem = await getAskMemory();
+    for (const k of Object.keys(values)) {
+      if (values[k]) mem[k] = String(values[k]).slice(0, 200);
+    }
+    await chrome.storage.local.set({ pp_ask_memory: mem });
+  } catch (e) { /* memory is best-effort */ }
+}
+
+// Renders a small form in place of the snippet list; onDone(values) fires on
+// submit with one trimmed value per label.
+function renderAskForm(asks, prefilled, onDone) {
+  const wrap = document.createElement('div');
+  wrap.className = 'pp-ask-form';
+  const head = document.createElement('div');
+  head.className = 'pp-ask-head';
+  head.textContent = 'Fill in the blanks';
+  wrap.appendChild(head);
+  const inputs = asks.map((label) => {
+    const lab = document.createElement('label');
+    lab.className = 'pp-ask-field';
+    lab.textContent = label;
+    const input = document.createElement('input');
+    input.type = 'text';
+    input.value = prefilled[label] || prefilled[label.toLowerCase()] || '';
+    input.placeholder = label;
+    input.dataset.label = label;
+    lab.appendChild(input);
+    wrap.appendChild(lab);
+    return input;
+  });
+  const actions = document.createElement('div');
+  actions.className = 'pp-ask-actions';
+  const fillBtn = document.createElement('button');
+  fillBtn.className = 'pp-btn pp-btn-ink';
+  fillBtn.textContent = 'Fill';
+  const cancelBtn = document.createElement('button');
+  cancelBtn.className = 'pp-btn pp-btn-ghost';
+  cancelBtn.textContent = 'Cancel';
+  actions.append(fillBtn, cancelBtn);
+  wrap.appendChild(actions);
+  listEl.innerHTML = '';
+  listEl.appendChild(wrap);
+  if (inputs[0]) inputs[0].focus();
+  const submit = async () => {
+    const values = {};
+    inputs.forEach((i) => { values[i.dataset.label] = i.value.trim(); });
+    await rememberAsks(values);
+    onDone(values);
+  };
+  fillBtn.addEventListener('click', submit);
+  cancelBtn.addEventListener('click', () => render());
+  wrap.addEventListener('keydown', (e) => {
+    if (e.key === 'Enter') { e.preventDefault(); submit(); }
+    if (e.key === 'Escape') { e.stopPropagation(); render(); }
+  });
+}
+
 async function fillSnippet(s) {
   let body = s.body;
   if (/\{\{\s*clipboard\s*\}\}/i.test(body)) {
@@ -136,6 +209,18 @@ async function fillSnippet(s) {
     body = resolveVars(body, { clipboardText: clip });
   }
   body = resolveVars(body, { url: CURRENT_URL, title: CURRENT_TAB ? CURRENT_TAB.title : '' });
+  const asks = extractAsks(body);
+  if (asks.length) {
+    const mem = await getAskMemory();
+    renderAskForm(asks, mem, async (values) => {
+      await fillResolved(substituteAsks(body, values), s);
+    });
+    return;
+  }
+  await fillResolved(body, s);
+}
+
+async function fillResolved(body, s) {
   const { before, after } = splitCursor(body);
 
   try {
@@ -180,21 +265,33 @@ async function executeFillAll(mapping) {
   }
 }
 
+// Snippets with {{ask:}} blanks can't go through fill-all (they need their
+// prompt first) — they're skipped and counted for the toast.
+function splitAskSnips(snips) {
+  const usable = snips.filter((s) => !extractAsks(s.body).length);
+  return { usable, skipped: snips.length - usable.length };
+}
+
 async function fillAll() {
-  const siteSnips = snippetsForSite(ALL_SNIPPETS, CURRENT_URL)
+  const all = snippetsForSite(ALL_SNIPPETS, CURRENT_URL)
     .filter((s) => s.keywords && s.keywords.trim());
-  if (!siteSnips.length) {
-    toast('Add "auto-fill keywords" to snippets in Manage first', 'err');
+  const { usable, skipped } = splitAskSnips(all);
+  if (!usable.length) {
+    toast(skipped ? 'Snippet has {{ask:}} blanks — click it individually instead' : 'Add "auto-fill keywords" to snippets in Manage first', 'err');
     return;
   }
-  const mapping = siteSnips.map((s) => ({
+  const mapping = usable.map((s) => ({
     keywords: s.keywords.split(',').map((k) => k.trim()).filter(Boolean),
     text: resolveForMapping(s.body)
   }));
   const out = await executeFillAll(mapping);
   if (!out) { toast("Can't fill this page (restricted)", 'err'); return; }
-  if (out.filled > 0) toast(`Filled ${out.filled} field${out.filled > 1 ? 's' : ''} ✓`, 'ok');
-  else toast('No matching empty fields found on this page', 'err');
+  if (out.filled > 0) {
+    const extra = skipped ? ` (${skipped} with blanks skipped)` : '';
+    toast(`Filled ${out.filled} field${out.filled > 1 ? 's' : ''} ✓${extra}`, 'ok');
+  } else {
+    toast('No matching empty fields found on this page', 'err');
+  }
 }
 
 async function fillMyDetails() {
@@ -209,16 +306,21 @@ async function fillMyDetails() {
     openDetailsSetup();
     return;
   }
-  const siteSnips = snippetsForSite(ALL_SNIPPETS, CURRENT_URL)
+  const all = snippetsForSite(ALL_SNIPPETS, CURRENT_URL)
     .filter((s) => s.keywords && s.keywords.trim());
-  const snippetMap = siteSnips.map((s) => ({
+  const { usable, skipped } = splitAskSnips(all);
+  const snippetMap = usable.map((s) => ({
     keywords: s.keywords.split(',').map((k) => k.trim()).filter(Boolean),
     text: resolveForMapping(s.body)
   }));
   const out = await executeFillAll([...identityMap, ...snippetMap]);
   if (!out) { toast("Can't fill this page (restricted)", 'err'); return; }
-  if (out.filled > 0) toast(`Filled ${out.filled} field${out.filled > 1 ? 's' : ''} ✓`, 'ok');
-  else toast('No matching empty fields found on this page', 'err');
+  if (out.filled > 0) {
+    const extra = skipped ? ` (${skipped} with blanks skipped)` : '';
+    toast(`Filled ${out.filled} field${out.filled > 1 ? 's' : ''} ✓${extra}`, 'ok');
+  } else {
+    toast('No matching empty fields found on this page', 'err');
+  }
 }
 
 async function fillProfileValue(label, value) {

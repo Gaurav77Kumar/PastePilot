@@ -1,6 +1,12 @@
 
 import { readSnippets, writeSnippets, getProfile, saveProfile } from '../lib/storage.js';
 import { PROFILE_FIELDS, PROFILE_TEXTAREAS, getCustomFields } from '../lib/identity.js';
+import { encodeShare, decodeShare } from '../lib/share.js';
+
+// Where shared-snippet links point. The page at /site/import.html is served
+// by GitHub Pages once enabled; it previews the snippet and hands the data
+// over via the editor's "⤵ Import shared" paste box.
+const SHARE_URL_BASE = 'https://gaurav77kumar.github.io/PastePilot/site/import.html#pp=';
 
 let snippets = [];
 let currentId = null;
@@ -67,6 +73,26 @@ function currentSnippet() {
 function showSaved() {
   els.savedMsg.hidden = false;
   setTimeout(() => { els.savedMsg.hidden = true; }, 1500);
+}
+
+// Creates an unsaved snippet from shared/captured data and selects it.
+function addImportedSnippet(data) {
+  const s = {
+    id: uid(),
+    title: data.title || 'Shared snippet',
+    body: data.body || '',
+    tags: Array.isArray(data.tags) ? data.tags : [],
+    sites: Array.isArray(data.sites) && data.sites.length ? data.sites : ['*'],
+    keywords: data.keywords || '',
+    usageCount: 0,
+    lastUsed: 0,
+    createdAt: Date.now()
+  };
+  snippets.unshift(s);
+  dirty = true;
+  selectSnippet(s.id);
+  els.fTitle.focus();
+  els.fTitle.select();
 }
 
 function renderSidebar() {
@@ -151,12 +177,58 @@ async function deleteSnippet() {
   selectSnippet(null);
 }
 
-// Form wiring 
+// Form wiring
 
 document.getElementById('newBtn').addEventListener('click', newSnippet);
 document.getElementById('saveBtn').addEventListener('click', saveSnippet);
 document.getElementById('deleteBtn').addEventListener('click', deleteSnippet);
 els.search.addEventListener('input', renderSidebar);
+
+// ---- Share (copy link) -----------------------------------------------------
+
+document.getElementById('shareBtn').addEventListener('click', async () => {
+  const s = {
+    title: els.fTitle.value.trim(),
+    body: els.fBody.value,
+    tags: els.fTags.value.split(',').map((t) => t.trim()).filter(Boolean),
+    sites: els.fSites.value.split(',').map((t) => t.trim()).filter(Boolean),
+    keywords: els.fKeywords.value.trim()
+  };
+  if (!s.body.trim()) { alert('Nothing to share yet — write the snippet content first.'); return; }
+  const url = SHARE_URL_BASE + encodeShare(s);
+  const btn = document.getElementById('shareBtn');
+  try {
+    await navigator.clipboard.writeText(url);
+    const old = btn.textContent;
+    btn.textContent = '✓ Link copied!';
+    setTimeout(() => { btn.textContent = old; }, 1600);
+  } catch (e) {
+    alert('Copy failed — select and copy this link manually:\n\n' + url);
+  }
+});
+
+// ---- Import shared (paste link) -------------------------------------------
+
+const importPanel = document.getElementById('importPanel');
+const importText = document.getElementById('importText');
+
+function applyImport() {
+  const res = decodeShare(importText.value);
+  if (!res.ok) { alert('Import failed: ' + res.error); return; }
+  if (dirty && !confirm('Discard unsaved changes?')) return;
+  importPanel.hidden = true;
+  addImportedSnippet(res.snippet);
+}
+
+document.getElementById('pasteImportBtn').addEventListener('click', () => {
+  importPanel.hidden = !importPanel.hidden;
+  if (!importPanel.hidden) { importText.value = ''; importText.focus(); }
+});
+document.getElementById('importApplyBtn').addEventListener('click', applyImport);
+document.getElementById('importCancelBtn').addEventListener('click', () => { importPanel.hidden = true; });
+importText.addEventListener('keydown', (e) => {
+  if ((e.ctrlKey || e.metaKey) && e.key === 'Enter') applyImport();
+});
 
 document.querySelectorAll('.ed-var').forEach((btn) => {
   btn.addEventListener('click', () => {
@@ -312,6 +384,12 @@ let currentProfile = {};
     showView('details');
   } else if (params.get('capture') === '1') {
     await captureSelection();
+  } else if (location.hash.startsWith('#pp=')) {
+    // Direct import: editor opened with a share payload in the fragment
+    let data = location.hash.slice(4);
+    try { data = decodeURIComponent(data); } catch (e) { /* already plain */ }
+    const res = decodeShare(data);
+    if (res.ok) addImportedSnippet(res.snippet);
   } else if (params.get('welcome') === '1' && snippets.length) {
     selectSnippet(snippets[0].id);
   }
