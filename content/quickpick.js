@@ -67,6 +67,13 @@
     }
     .pp-q-results::-webkit-scrollbar { width: 10px; }
     .pp-q-results::-webkit-scrollbar-thumb { background: #e3d8bf; border-radius: 99px; border: 3px solid #fdfaf1; }
+    .pp-q-ask { padding: 2px 8px 10px; }
+    .pp-q-ask-field { margin: 10px 6px 0; }
+    .pp-q-ask-field span { display: block; font-size: 9.5px; font-weight: 700; letter-spacing: .08em; text-transform: uppercase; color: #a2937a; margin-bottom: 3px; }
+    .pp-q-ask-field input { width: 100%; box-sizing: border-box; padding: 8px 10px; border: 1px solid #e3d8bf; border-radius: 7px; background: #fffdf6; color: #33291c; font: 13px Georgia, "Iowan Old Style", serif; outline: none; }
+    .pp-q-ask-field input:focus { border-color: #3a5a80; }
+    .pp-q-ask-fill { margin: 12px 6px 2px; padding: 8px 16px; border: none; border-radius: 7px; background: #3a5a80; color: #fdfaf1; font-weight: 700; font-size: 12.5px; cursor: pointer; }
+    .pp-q-ask-fill:hover { background: #2f4a6b; }
   `;
 
   let root = null;
@@ -184,7 +191,32 @@
     return { before: text.slice(0, m.index), after: text.slice(m.index + m[0].length) };
   }
 
+  // Mirror of lib/variables.js {{ask:...}} helpers (classic script — no imports)
+  function extractAsks(text) {
+    const out = [];
+    const re = /\{\{\s*ask\s*:\s*([^{}]+?)\s*\}\}/gi;
+    let m;
+    while ((m = re.exec(String(text || '')))) {
+      const label = m[1].trim();
+      if (label && !out.some((x) => x.toLowerCase() === label.toLowerCase())) out.push(label);
+    }
+    return out;
+  }
+
+  function substituteAsks(text, values) {
+    const norm = {};
+    for (const k of Object.keys(values || {})) norm[k.toLowerCase()] = values[k];
+    return String(text || '').replace(/\{\{\s*ask\s*:\s*([^{}]+?)\s*\}\}/gi, (m, label) => {
+      const v = norm[String(label).trim().toLowerCase()];
+      return v === undefined ? m : v;
+    });
+  }
+
   function pick(entry) {
+    if (entry.kind === 'snippet' && extractAsks(entry.s.body).length) {
+      openAskForm(entry, extractAsks(entry.s.body));
+      return;
+    }
     let text;
     if (entry.kind === 'detail') {
       text = entry.value;
@@ -199,6 +231,75 @@
           chrome.runtime.sendMessage({ type: 'pp-usage', id: entry.s.id });
         } catch (e) { /* extension context gone; ignore */ }
       }
+      close();
+    } else {
+      flash('Click into a form field first');
+    }
+  }
+
+  // {{ask:}} blanks: swap the results list for a tiny form, then fill with
+  // the collected values. Recent answers are remembered per label.
+  function openAskForm(entry, asks) {
+    const results = root.querySelector('.pp-q-results');
+    chrome.storage.local.get('pp_ask_memory', (mem) => {
+      const memory = (mem && mem.pp_ask_memory) || {};
+      results.innerHTML = '';
+      const form = document.createElement('div');
+      form.className = 'pp-q-ask';
+      const head = document.createElement('div');
+      head.className = 'pp-q-section';
+      head.textContent = 'Fill in the blanks';
+      form.appendChild(head);
+      const inputs = asks.map((label) => {
+        const field = document.createElement('div');
+        field.className = 'pp-q-ask-field';
+        const span = document.createElement('span');
+        span.textContent = label;
+        const input = document.createElement('input');
+        input.type = 'text';
+        input.value = memory[label] || memory[label.toLowerCase()] || '';
+        input.placeholder = label;
+        input.dataset.label = label;
+        field.appendChild(span);
+        field.appendChild(input);
+        form.appendChild(field);
+        return input;
+      });
+      const fillBtn = document.createElement('button');
+      fillBtn.className = 'pp-q-ask-fill';
+      fillBtn.textContent = 'Fill';
+      form.appendChild(fillBtn);
+      results.appendChild(form);
+      if (inputs[0]) inputs[0].focus();
+      const submit = () => {
+        const values = {};
+        inputs.forEach((i) => { values[i.dataset.label] = i.value.trim(); });
+        try {
+          chrome.storage.local.get('pp_ask_memory', (o) => {
+            const memory2 = (o && o.pp_ask_memory) || {};
+            for (const k of Object.keys(values)) {
+              if (values[k]) memory2[k] = String(values[k]).slice(0, 200);
+            }
+            chrome.storage.local.set({ pp_ask_memory: memory2 });
+          });
+        } catch (e) { /* memory is best-effort */ }
+        fillAsk(entry, values);
+      };
+      fillBtn.addEventListener('click', submit);
+      form.addEventListener('keydown', (e) => {
+        if (e.key === 'Enter') { e.preventDefault(); submit(); }
+        if (e.key === 'Escape') { e.stopPropagation(); close(); }
+      });
+    });
+  }
+
+  function fillAsk(entry, values) {
+    const text = resolveVars(substituteAsks(entry.s.body, values));
+    const { before, after } = splitCursor(text);
+    if (fillActive(before, after)) {
+      try {
+        chrome.runtime.sendMessage({ type: 'pp-usage', id: entry.s.id });
+      } catch (e) { /* extension context gone; ignore */ }
       close();
     } else {
       flash('Click into a form field first');
@@ -262,7 +363,7 @@
       snipItems.forEach((s) => addItem(
         { kind: 'snippet', s },
         s.title,
-        s.body.replace(/\{\{\s*cursor\s*\}\}/gi, '').replace(/\s+/g, ' ').trim().slice(0, 80)
+        s.body.replace(/\{\{\s*cursor\s*\}\}/gi, '').replace(/\{\{\s*ask\s*:[^}]*\}\}/gi, '[blank]').replace(/\s+/g, ' ').trim().slice(0, 80)
       ));
     }
   }

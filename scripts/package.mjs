@@ -17,7 +17,7 @@ const OUT = join(DIST, `pastepilot-v${manifest.version}.zip`);
 // Dev-only entries that must never end up in the store package.
 const EXCLUDED_DIRS = new Set([
   '.git', '.github', 'dist', 'node_modules',
-  'tests', 'test', 'scripts', 'docs'
+  'tests', 'test', 'scripts', 'docs', 'site'
 ]);
 const EXCLUDED_FILES = new Set([
   'package.json', 'package-lock.json', 'README.md', '.gitignore'

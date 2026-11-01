@@ -1,0 +1,58 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>PastePilot — Import shared snippet</title>
+  <style>
+    :root { --paper: #f6f1e3; --card: #fdfaf1; --edge: #e3d8bf; --ink: #33291c; --ink2: #6d604a; --accent: #3a5a80; }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0; min-height: 100vh; display: flex; align-items: flex-start; justify-content: center;
+      padding: 48px 20px; background: var(--paper); color: var(--ink);
+      font: 15px/1.55 Georgia, "Iowan Old Style", serif;
+    }
+    #card {
+      width: 100%; max-width: 560px; background: var(--card);
+      border: 1px solid var(--edge); border-radius: 12px;
+      box-shadow: 0 2px 4px rgba(46,36,20,.15), 0 24px 60px rgba(46,36,20,.18);
+      padding: 28px 30px;
+    }
+    #logo { font-weight: 700; letter-spacing: .01em; margin-bottom: 18px; }
+    #logo em { font-style: normal; color: var(--accent); }
+    h1 { font-size: 21px; margin: 0 0 4px; }
+    #m { color: var(--ink2); font-size: 12.5px; margin: 2px 0 14px; }
+    #b {
+      white-space: pre-wrap; word-break: break-word; margin: 0 0 18px;
+      padding: 14px 16px; background: #fffdf6; border: 1px dashed var(--edge); border-radius: 10px;
+      font: 13.5px/1.6 ui-monospace, Consolas, "Courier New", monospace; color: var(--ink);
+      max-height: 320px; overflow: auto;
+    }
+    #copy {
+      display: inline-block; border: none; cursor: pointer; border-radius: 8px;
+      background: var(--accent); color: var(--card); font-weight: 700; font-size: 14px;
+      padding: 10px 18px; font-family: inherit;
+    }
+    #copy:hover { filter: brightness(1.1); }
+    #how { color: var(--ink2); font-size: 13px; margin: 16px 0 0; }
+    #how a { color: var(--accent); }
+    #hint { color: var(--ink2); font-size: 12px; margin-top: 10px; }
+  </style>
+</head>
+<body>
+  <div id="card">
+    <div id="logo">✈ Paste<em>Pilot</em></div>
+    <h1 id="t">Import shared snippet</h1>
+    <div id="m"></div>
+    <pre id="b"></pre>
+    <button id="copy">Copy snippet data</button>
+    <p id="how">
+      Open PastePilot → Editor → <b>⤵ Import shared</b> → paste → <b>Import</b>.<br>
+      Don't have PastePilot? <a href="https://github.com/Gaurav77Kumar/PastePilot">Install it free</a> —
+      it works entirely inside your browser.
+    </p>
+    <p id="hint">This link contains the snippet itself — nothing was sent to any server.</p>
+  </div>
+  <script src="import.js"></script>
+</body>
+</html>

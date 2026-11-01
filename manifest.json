@@ -1,7 +1,7 @@
 {
   "manifest_version": 3,
   "name": "PastePilot — Site-Aware Snippets",
-  "version": "1.0.0",
+  "version": "1.1.0",
   "description": "Clipboard snippets that know which site you're on. One-click fill of addresses, replies, and answers you paste every day.",
   "minimum_chrome_version": "102",
   "permissions": ["activeTab", "contextMenus", "scripting", "storage"],
