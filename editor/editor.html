@@ -60,7 +60,7 @@
           <div class="ed-toolbar">
             <button class="ed-var" data-var="{{cursor}}" title="Caret lands here after fill">{{cursor}}</button>
             <button class="ed-var" data-var="{{ask:}}" title="Asks for a value each time the snippet is filled">{{ask:}}</button>
-            <button class="ed-var" data-var="{{date}}">{{date}}</button>
+            <button class="ed-var" data-var="{{date}}" title="Today's date — add :YYYY-MM-DD for a custom format">{{date}}</button>
             <button class="ed-var" data-var="{{date+7}}">{{date+7}}</button>
             <button class="ed-var" data-var="{{time}}">{{time}}</button>
             <button class="ed-var" data-var="{{year}}">{{year}}</button>
@@ -86,6 +86,7 @@
 
         <div class="ed-form-actions">
           <button id="saveBtn" class="ed-btn ed-btn-primary">Save snippet</button>
+          <button id="favBtn" class="ed-btn" title="Pin this snippet to the top of your list">☆ Favorite</button>
           <button id="shareBtn" class="ed-btn" title="Copy a share link for this snippet — no account needed">🔗 Share</button>
           <button id="deleteBtn" class="ed-btn ed-btn-danger">Delete</button>
           <span id="savedMsg" class="ed-saved" hidden>Saved ✓</span>

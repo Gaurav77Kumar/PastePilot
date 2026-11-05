@@ -37,6 +37,7 @@ you're on, the right snippet is always at the top of the list.
   `{{url}}`, `{{clipboard}}` and `{{cursor}}` resolve at fill time
 - **Fill-in-the-blanks** — `{{ask:Company}}` prompts you for values when the
   snippet is filled (recent answers remembered); one template replaces ten copies
+- **★ Favorites** — pin the snippets you use most; they always sit at the top
 - **Share snippets as a link** — copy a link to any snippet; recipients preview it
   and import it with one paste. Zero servers: the snippet rides inside the link
 - **Private by design** — no accounts, no servers, no analytics. Data lives in
@@ -71,8 +72,9 @@ you're on, the right snippet is always at the top of the list.
 | Variable | Fills in |
 |---|---|
 | `{{date}}` | Today, in your locale format |
+| `{{date:YYYY-MM-DD}}` | Today in a custom format (tokens: `YYYY YY MMMM MMM MM DD`), combine with offsets: `{{date+7:MM/DD}}` |
 | `{{date+7}}` / `{{date-1}}` | Date shifted by days |
-| `{{time}}` | Current time |
+| `{{time}}` | Current time, locale format — or `{{time:HH:mm}}` for 24-hour |
 | `{{year}}` | Four-digit year |
 | `{{url}}` / `{{title}}` | URL / title of the page being filled |
 | `{{clipboard}}` | Whatever is on your clipboard at fill time |
@@ -93,4 +95,3 @@ PastePilot collects **nothing**. It requests only `activeTab`, `contextMenus`,
 `scripting` and `storage` — no broad host permissions, no background page
 access, no remote code. Snippets never leave your browser. Full policy:
 [docs/privacy-policy.md](docs/privacy-policy.md).
-

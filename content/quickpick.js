@@ -174,13 +174,30 @@
 
   function resolveVars(text) {
     const now = new Date();
-    return text.replace(/\{\{\s*(date|time|year)(?:\s*([+-])\s*(\d+))?\s*\}\}/gi, (m, name, sign, num) => {
+    const MONTHS = ['January', 'February', 'March', 'April', 'May', 'June', 'July',
+      'August', 'September', 'October', 'November', 'December'];
+    const pad2 = (n) => String(n).padStart(2, '0');
+    return text.replace(/\{\{\s*(date|time|year)(?:\s*([+-])\s*(\d+))?(?:\s*:\s*([^{}]+?))?\s*\}\}/gi, (m, name, sign, num, fmt) => {
       if (name.toLowerCase() === 'year') return String(now.getFullYear());
       if (name.toLowerCase() === 'time') {
+        if (fmt && /HH|mm/.test(fmt)) {
+          return String(fmt).trim()
+            .replace(/HH/g, pad2(now.getHours()))
+            .replace(/mm/g, pad2(now.getMinutes()));
+        }
         try { return now.toLocaleTimeString(undefined, { hour: '2-digit', minute: '2-digit' }); } catch (e) { return m; }
       }
       const d = new Date(now);
       if (sign && num) d.setDate(d.getDate() + parseInt(num, 10) * (sign === '-' ? -1 : 1));
+      if (fmt && /YYYY|YY|MMMM|MMM|MM|DD/.test(fmt)) {
+        return String(fmt).trim()
+          .replace(/YYYY/g, String(d.getFullYear()))
+          .replace(/YY/g, String(d.getFullYear()).slice(-2))
+          .replace(/MMMM/g, MONTHS[d.getMonth()])
+          .replace(/MMM/g, MONTHS[d.getMonth()].slice(0, 3))
+          .replace(/MM/g, pad2(d.getMonth() + 1))
+          .replace(/DD/g, pad2(d.getDate()));
+      }
       try { return d.toLocaleDateString(undefined, { year: 'numeric', month: 'short', day: 'numeric' }); } catch (e) { return d.toDateString(); }
     });
   }
@@ -329,6 +346,7 @@
     const detItems = details.filter((d) => !q || (d.label + ' ' + d.value).toLowerCase().includes(q));
     const siteSnips = snippets.filter((s) => siteMatches((s.sites || ['*'])[0]) || (s.sites || []).some(siteMatches));
     const snipItems = siteSnips.filter((s) => !q || (s.title + ' ' + s.body).toLowerCase().includes(q));
+    snipItems.sort((a, b) => (b.favorite ? 1 : 0) - (a.favorite ? 1 : 0));
 
     filtered = [];
     if (!detItems.length && !snipItems.length) {
@@ -362,7 +380,7 @@
       wrap.appendChild(head);
       snipItems.forEach((s) => addItem(
         { kind: 'snippet', s },
-        s.title,
+        (s.favorite ? '★ ' : '') + s.title,
         s.body.replace(/\{\{\s*cursor\s*\}\}/gi, '').replace(/\{\{\s*ask\s*:[^}]*\}\}/gi, '[blank]').replace(/\s+/g, ' ').trim().slice(0, 80)
       ));
     }

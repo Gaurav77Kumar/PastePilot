@@ -86,3 +86,42 @@ test('same label used twice fills with one answer', () => {
   const t = '{{ask:Company}} is hiring. Join {{ask:Company}}!';
   assert.equal(substituteAsks(t, { company: 'Acme' }), 'Acme is hiring. Join Acme!');
 });
+
+// ---- Custom date/time formats ----------------------------------------------
+
+test('{{date:YYYY-MM-DD}} supports custom formats', () => {
+  const d = new Date();
+  const p = (n) => String(n).padStart(2, '0');
+  assert.equal(
+    resolveVars('{{date:YYYY-MM-DD}}', {}),
+    `${d.getFullYear()}-${p(d.getMonth() + 1)}-${p(d.getDate())}`
+  );
+});
+
+test('{{date+1:DD/MM/YYYY}} combines offset with format', () => {
+  const d = new Date();
+  d.setDate(d.getDate() + 1);
+  const p = (n) => String(n).padStart(2, '0');
+  assert.equal(
+    resolveVars('{{date+1:DD/MM/YYYY}}', {}),
+    `${p(d.getDate())}/${p(d.getMonth() + 1)}/${d.getFullYear()}`
+  );
+});
+
+test('MMM renders the abbreviated month name', () => {
+  const d = new Date();
+  const p = (n) => String(n).padStart(2, '0');
+  const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+  assert.equal(resolveVars('{{date:MMM DD}}', {}), `${months[d.getMonth()]} ${p(d.getDate())}`);
+});
+
+test('format without any date token falls back to locale', () => {
+  const expected = new Date().toLocaleDateString(undefined, DATE_OPTS);
+  assert.equal(resolveVars('{{date:hello}}', {}), expected);
+});
+
+test('{{time:HH:mm}} supports custom time formats', () => {
+  const d = new Date();
+  const p = (n) => String(n).padStart(2, '0');
+  assert.equal(resolveVars('{{time:HH:mm}}', {}), `${p(d.getHours())}:${p(d.getMinutes())}`);
+});

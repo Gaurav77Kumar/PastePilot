@@ -61,7 +61,7 @@ function renderItem(s, onClick) {
   const tags = (s.tags || []).slice(0, 3)
     .map((t) => `<span class="pp-tag">${esc(t)}</span>`).join('');
   div.innerHTML = `
-    <div class="pp-item-title"><span>${esc(s.title)}</span>${s.usageCount ? `<span class="pp-uses">${s.usageCount}×</span>` : ''}</div>
+    <div class="pp-item-title"><span>${s.favorite ? '★ ' : ''}${esc(s.title)}</span>${s.usageCount ? `<span class="pp-uses">${s.usageCount}×</span>` : ''}</div>
     <div class="pp-item-preview">${esc(preview.slice(0, 90))}</div>
     ${tags ? `<div class="pp-item-tags">${tags}</div>` : ''}`;
   div.addEventListener('click', () => onClick(s));
@@ -72,9 +72,11 @@ function render() {
   const q = searchEl.value.trim().toLowerCase();
   listEl.innerHTML = '';
 
-  const siteSnips = sortSnippets(snippetsForSite(ALL_SNIPPETS, CURRENT_URL));
+  // Favorites always float to the top in their own section
+  const favs = sortSnippets(ALL_SNIPPETS.filter((s) => s.favorite));
+  const siteSnips = sortSnippets(snippetsForSite(ALL_SNIPPETS, CURRENT_URL).filter((s) => !s.favorite));
   const genericSnips = sortSnippets(
-    ALL_SNIPPETS.filter((s) => !snippetMatchesSite(s, CURRENT_URL))
+    ALL_SNIPPETS.filter((s) => !snippetMatchesSite(s, CURRENT_URL) && !s.favorite)
   );
 
   const filter = (arr) => {
@@ -86,10 +88,11 @@ function render() {
       .map((x) => x.s);
   };
 
+  const favFiltered = filter(favs);
   const siteFiltered = filter(siteSnips);
   const genericFiltered = filter(genericSnips);
 
-  if (!siteFiltered.length && !genericFiltered.length) {
+  if (!favFiltered.length && !siteFiltered.length && !genericFiltered.length) {
     const empty = document.createElement('div');
     empty.className = 'pp-empty';
     empty.innerHTML = `
@@ -101,6 +104,13 @@ function render() {
     return;
   }
 
+  if (favFiltered.length) {
+    const lbl = document.createElement('div');
+    lbl.className = 'pp-section-label';
+    lbl.textContent = '★ Favorites';
+    listEl.appendChild(lbl);
+    favFiltered.forEach((s) => listEl.appendChild(renderItem(s, fillSnippet)));
+  }
   if (siteFiltered.length) {
     const lbl = document.createElement('div');
     lbl.className = 'pp-section-label';
@@ -117,7 +127,7 @@ function render() {
   }
 
   document.getElementById('footCount').textContent =
-    `${siteFiltered.length + genericFiltered.length} shown · ${ALL_SNIPPETS.length} total`;
+    `${favFiltered.length + siteFiltered.length + genericFiltered.length} shown · ${ALL_SNIPPETS.length} total`;
 }
 
 async function getClipboard() {

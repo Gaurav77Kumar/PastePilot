@@ -24,7 +24,8 @@ const els = {
   fSites: document.getElementById('fSites'),
   fKeywords: document.getElementById('fKeywords'),
   charCount: document.getElementById('charCount'),
-  savedMsg: document.getElementById('savedMsg')
+  savedMsg: document.getElementById('savedMsg'),
+  fav: document.getElementById('favBtn')
 };
 
 function uid() {
@@ -104,7 +105,7 @@ function renderSidebar() {
     const div = document.createElement('div');
     div.className = 'ed-side-item' + (s.id === currentId ? ' active' : '');
     div.innerHTML = `<div class="t"></div><div class="s"></div>`;
-    div.querySelector('.t').textContent = s.title || 'Untitled';
+    div.querySelector('.t').textContent = (s.favorite ? '★ ' : '') + (s.title || 'Untitled');
     div.querySelector('.s').textContent = s.body.replace(/\s+/g, ' ').slice(0, 60);
     div.addEventListener('click', () => {
       if (dirty && !confirm('Discard unsaved changes?')) return;
@@ -115,12 +116,18 @@ function renderSidebar() {
   els.countLabel.textContent = `${snippets.length} snippet${snippets.length === 1 ? '' : 's'}`;
 }
 
+// Keeps the favorite button in sync with the selected snippet.
+function updateFavBtn(s) {
+  els.fav.textContent = s && s.favorite ? '★ Favorited' : '☆ Favorite';
+}
+
 function selectSnippet(id) {
   currentId = id;
   dirty = false;
   const s = currentSnippet();
   els.editorPane.hidden = !s;
   els.emptyPane.hidden = !!s;
+  updateFavBtn(s);
   if (!s) return;
   els.fTitle.value = s.title || '';
   els.fBody.value = s.body || '';
@@ -183,6 +190,18 @@ document.getElementById('newBtn').addEventListener('click', newSnippet);
 document.getElementById('saveBtn').addEventListener('click', saveSnippet);
 document.getElementById('deleteBtn').addEventListener('click', deleteSnippet);
 els.search.addEventListener('input', renderSidebar);
+
+// ---- Favorites (pin to top) -------------------------------------------------
+
+els.fav.addEventListener('click', async () => {
+  const s = currentSnippet();
+  if (!s) return;
+  s.favorite = !s.favorite;
+  updateFavBtn(s);
+  await writeSnippets(snippets);
+  renderSidebar();
+  showSaved();
+});
 
 // ---- Share (copy link) -----------------------------------------------------
 
