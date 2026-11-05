@@ -11,7 +11,7 @@ import { fileURLToPath } from 'node:url';
 // Only the shipped extension is scanned — dev folders (tests, scripts, docs,
 // CI) are excluded, matching exactly what scripts/package.mjs puts in the zip.
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), '..');
-const DEV_DIRS = new Set(['.git', '.github', 'dist', 'node_modules', 'tests', 'test', 'scripts', 'docs']);
+const DEV_DIRS = new Set(['.git', '.github', 'dist', 'node_modules', 'tests', 'test', 'scripts', 'docs', 'site']);
 const manifest = JSON.parse(readFileSync(join(ROOT, 'manifest.json'), 'utf8'));
 
 function walk(dir) {

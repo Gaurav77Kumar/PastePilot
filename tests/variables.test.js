@@ -1,6 +1,6 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { resolveVars, splitCursor } from '../lib/variables.js';
+import { resolveVars, splitCursor, extractAsks, substituteAsks } from '../lib/variables.js';
 
 const DATE_OPTS = { year: 'numeric', month: 'short', day: 'numeric' };
 const TIME_OPTS = { hour: '2-digit', minute: '2-digit' };
@@ -51,4 +51,77 @@ test('splitCursor splits at the marker and reports none when absent', () => {
   const two = splitCursor('a {{cursor}} b {{cursor}} c');
   assert.equal(two.before, 'a ');
   assert.equal(two.after, ' b {{cursor}} c');
+});
+
+// ---- {{ask:Label}} fill-in-the-blanks --------------------------------------
+
+test('extractAsks finds unique labels in order, trimmed, case-insensitive', () => {
+  assert.deepEqual(
+    extractAsks('Hi {{ask:Name}} — again {{ask: name}} — at {{ask:Company}}'),
+    ['Name', 'Company']
+  );
+  assert.deepEqual(extractAsks('no blanks here'), []);
+  assert.deepEqual(extractAsks('{{ask:}}'), []); // empty label ignored
+  assert.deepEqual(extractAsks(null), []);
+});
+
+test('substituteAsks fills every occurrence, case-insensitive labels', () => {
+  assert.equal(
+    substituteAsks('Hi {{ask:Name}} / hi {{ ask:name }}!', { Name: 'Ada' }),
+    'Hi Ada / hi Ada!'
+  );
+});
+
+test('substituteAsks leaves unmatched blanks untouched', () => {
+  assert.equal(substituteAsks('{{ask:A}} {{ask:B}}', { a: 'x' }), 'x {{ask:B}}');
+  assert.equal(substituteAsks('{{ask:A}}', {}), '{{ask:A}}');
+});
+
+test('asks coexist with the other variables', () => {
+  const t = '{{year}} {{ask:Name}} {{cursor}}';
+  assert.equal(substituteAsks(t, { name: 'Ada' }), '{{year}} Ada {{cursor}}');
+});
+
+test('same label used twice fills with one answer', () => {
+  const t = '{{ask:Company}} is hiring. Join {{ask:Company}}!';
+  assert.equal(substituteAsks(t, { company: 'Acme' }), 'Acme is hiring. Join Acme!');
+});
+
+// ---- Custom date/time formats ----------------------------------------------
+
+test('{{date:YYYY-MM-DD}} supports custom formats', () => {
+  const d = new Date();
+  const p = (n) => String(n).padStart(2, '0');
+  assert.equal(
+    resolveVars('{{date:YYYY-MM-DD}}', {}),
+    `${d.getFullYear()}-${p(d.getMonth() + 1)}-${p(d.getDate())}`
+  );
+});
+
+test('{{date+1:DD/MM/YYYY}} combines offset with format', () => {
+  const d = new Date();
+  d.setDate(d.getDate() + 1);
+  const p = (n) => String(n).padStart(2, '0');
+  assert.equal(
+    resolveVars('{{date+1:DD/MM/YYYY}}', {}),
+    `${p(d.getDate())}/${p(d.getMonth() + 1)}/${d.getFullYear()}`
+  );
+});
+
+test('MMM renders the abbreviated month name', () => {
+  const d = new Date();
+  const p = (n) => String(n).padStart(2, '0');
+  const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+  assert.equal(resolveVars('{{date:MMM DD}}', {}), `${months[d.getMonth()]} ${p(d.getDate())}`);
+});
+
+test('format without any date token falls back to locale', () => {
+  const expected = new Date().toLocaleDateString(undefined, DATE_OPTS);
+  assert.equal(resolveVars('{{date:hello}}', {}), expected);
+});
+
+test('{{time:HH:mm}} supports custom time formats', () => {
+  const d = new Date();
+  const p = (n) => String(n).padStart(2, '0');
+  assert.equal(resolveVars('{{time:HH:mm}}', {}), `${p(d.getHours())}:${p(d.getMinutes())}`);
 });
