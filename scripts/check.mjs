@@ -11,7 +11,7 @@ const ROOT = join(dirname(fileURLToPath(import.meta.url)), '..');
 
 // Runtime folders plus dev folders (which should also parse cleanly);
 // background.js lives at the root itself.
-const SCAN_DIRS = ['lib', 'popup', 'editor', 'content', 'scripts', 'tests', 'test'];
+const SCAN_DIRS = ['lib', 'popup', 'editor', 'content', 'scripts', 'tests', 'test', 'site'];
 
 function walk(dir) {
   const out = [];

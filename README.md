@@ -35,6 +35,11 @@ you're on, the right snippet is always at the top of the list.
   events, so React, Vue and other JS forms register the change
 - **Template variables** — `{{date}}`, `{{date+7}}`, `{{time}}`, `{{year}}`,
   `{{url}}`, `{{clipboard}}` and `{{cursor}}` resolve at fill time
+- **Fill-in-the-blanks** — `{{ask:Company}}` prompts you for values when the
+  snippet is filled (recent answers remembered); one template replaces ten copies
+- **★ Favorites** — pin the snippets you use most; they always sit at the top
+- **Share snippets as a link** — copy a link to any snippet; recipients preview it
+  and import it with one paste. Zero servers: the snippet rides inside the link
 - **Private by design** — no accounts, no servers, no analytics. Data lives in
   your browser and follows you across devices through Chrome Sync
 
@@ -67,12 +72,22 @@ you're on, the right snippet is always at the top of the list.
 | Variable | Fills in |
 |---|---|
 | `{{date}}` | Today, in your locale format |
+| `{{date:YYYY-MM-DD}}` | Today in a custom format (tokens: `YYYY YY MMMM MMM MM DD`), combine with offsets: `{{date+7:MM/DD}}` |
 | `{{date+7}}` / `{{date-1}}` | Date shifted by days |
-| `{{time}}` | Current time |
+| `{{time}}` | Current time, locale format — or `{{time:HH:mm}}` for 24-hour |
 | `{{year}}` | Four-digit year |
 | `{{url}}` / `{{title}}` | URL / title of the page being filled |
 | `{{clipboard}}` | Whatever is on your clipboard at fill time |
+| `{{ask:Label}}` | Asks you for a value when the snippet is filled (remembered per label) |
 | `{{cursor}}` | Where your caret lands after filling |
+
+### Sharing snippets
+
+Click **🔗 Share** in the editor to copy a link for the snippet you're editing.
+Anyone opening that link sees a clean preview page; **Copy snippet data** → open
+PastePilot → **⤵ Import shared** → paste → done. The snippet is encoded inside
+the link's fragment, so there are no accounts, no servers and no tracking — the
+data simply travels with the URL you choose to send.
 
 ## Privacy
 
