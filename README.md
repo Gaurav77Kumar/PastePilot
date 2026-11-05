@@ -95,4 +95,3 @@ PastePilot collects **nothing**. It requests only `activeTab`, `contextMenus`,
 `scripting` and `storage` — no broad host permissions, no background page
 access, no remote code. Snippets never leave your browser. Full policy:
 [docs/privacy-policy.md](docs/privacy-policy.md).
-
