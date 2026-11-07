@@ -13,7 +13,8 @@ PastePilot ("the extension") is built to keep your data entirely on your machine
 - Your snippets (titles, content, tags, site rules, usage counts) are stored **only in your browser's local storage** (`chrome.storage.sync` / `chrome.storage.local`).
 - If Chrome Sync is enabled in your browser, Chrome itself may sync this storage across your signed-in devices. This is handled entirely by Google's infrastructure under your Google account — PastePilot never transmits anything anywhere.
 - You can delete all of your data at any time by removing the extension (or by deleting individual snippets in the editor).
-- Sharing a snippet copies its content into a link that you choose to send to someone. PastePilot does not transmit, shorten or track these links — the snippet data simply rides inside the URL itself.
+- **Vault snippets** are encrypted in your browser with AES-GCM using a passphrase that only you know. The passphrase is never stored or transmitted, and encrypted content cannot be read by anyone without it — there is no server that could be breached.
+- Sharing a snippet (or a pack of snippets) copies its content into a link that you choose to send to someone. PastePilot does not transmit, shorten or track these links — the data simply rides inside the URL itself. Vault snippets cannot be shared.
 
 ## Permissions PastePilot requests, and why
 

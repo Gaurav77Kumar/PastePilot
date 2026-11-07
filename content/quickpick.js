@@ -81,6 +81,7 @@
   let activeIdx = 0;
   let snippets = [];
   let details = [];
+  let vaultPassCache = null; // { pass, until }
 
   // Mirror of lib/identity.js core fields (classic script — can't import ES modules)
   const CORE_DETAILS = [
@@ -230,6 +231,10 @@
   }
 
   function pick(entry) {
+    if (entry.kind === 'snippet' && entry.s.vault) {
+      openPassPrompt(entry);
+      return;
+    }
     if (entry.kind === 'snippet' && extractAsks(entry.s.body).length) {
       openAskForm(entry, extractAsks(entry.s.body));
       return;
@@ -313,6 +318,104 @@
   function fillAsk(entry, values) {
     const text = resolveVars(substituteAsks(entry.s.body, values));
     const { before, after } = splitCursor(text);
+    if (fillActive(before, after)) {
+      try {
+        chrome.runtime.sendMessage({ type: 'pp-usage', id: entry.s.id });
+      } catch (e) { /* extension context gone; ignore */ }
+      close();
+    } else {
+      flash('Click into a form field first');
+    }
+  }
+
+  // Vault snippets: passphrase prompt → local decrypt (mirror of lib/vault.js
+  // decrypt path — classic script, no imports) → fill the plaintext.
+  function vaultDecrypt(pass, blob) {
+    const b64ToBytes = (s) => {
+      let t = String(s).replace(/-/g, '+').replace(/_/g, '/');
+      while (t.length % 4) t += '=';
+      const bin = atob(t);
+      const u = new Uint8Array(bin.length);
+      for (let i = 0; i < bin.length; i++) u[i] = bin.charCodeAt(i);
+      return u;
+    };
+    const enc = new TextEncoder();
+    return crypto.subtle.importKey('raw', enc.encode(String(pass)), 'PBKDF2', false, ['deriveKey'])
+      .then((km) => crypto.subtle.deriveKey(
+        { name: 'PBKDF2', salt: b64ToBytes(blob.salt), iterations: 310000, hash: 'SHA-256' },
+        km,
+        { name: 'AES-GCM', length: 256 },
+        false,
+        ['decrypt']
+      ))
+      .then((key) => crypto.subtle.decrypt(
+        { name: 'AES-GCM', iv: b64ToBytes(blob.iv) },
+        key,
+        b64ToBytes(blob.ct)
+      ))
+      .then((pt) => new TextDecoder().decode(pt));
+  }
+
+  function openPassPrompt(entry) {
+    const cached = vaultPassCache && vaultPassCache.until > Date.now() ? vaultPassCache.pass : null;
+    if (cached) {
+      vaultDecrypt(cached, entry.s.vault)
+        .then((plain) => {
+          fillVault(entry, plain);
+        })
+        .catch(() => {
+          vaultPassCache = null;
+          openPassPrompt(entry); // stale cache — prompt instead
+        });
+      return;
+    }
+    const results = root.querySelector('.pp-q-results');
+    results.innerHTML = '';
+    const form = document.createElement('div');
+    form.className = 'pp-q-ask';
+    const head = document.createElement('div');
+    head.className = 'pp-q-section';
+    head.textContent = '🔒 Vault snippet';
+    const field = document.createElement('div');
+    field.className = 'pp-q-ask-field';
+    const span = document.createElement('span');
+    span.textContent = 'Passphrase';
+    const input = document.createElement('input');
+    input.type = 'password';
+    input.placeholder = 'Vault passphrase';
+    field.appendChild(span);
+    field.appendChild(input);
+    const fillBtn = document.createElement('button');
+    fillBtn.className = 'pp-q-ask-fill';
+    fillBtn.textContent = 'Unlock & fill';
+    form.appendChild(head);
+    form.appendChild(field);
+    form.appendChild(fillBtn);
+    results.appendChild(form);
+    input.focus();
+    const submit = () => {
+      const pass = input.value;
+      if (!pass) return;
+      vaultDecrypt(pass, entry.s.vault)
+        .then((plain) => {
+          vaultPassCache = { pass, until: Date.now() + 5 * 60 * 1000 };
+          fillVault(entry, plain);
+        })
+        .catch(() => {
+          flash('Wrong passphrase');
+          input.value = '';
+          input.focus();
+        });
+    };
+    fillBtn.addEventListener('click', submit);
+    form.addEventListener('keydown', (e) => {
+      if (e.key === 'Enter') { e.preventDefault(); submit(); }
+      if (e.key === 'Escape') { e.stopPropagation(); close(); }
+    });
+  }
+
+  function fillVault(entry, plain) {
+    const { before, after } = splitCursor(resolveVars(plain));
     if (fillActive(before, after)) {
       try {
         chrome.runtime.sendMessage({ type: 'pp-usage', id: entry.s.id });

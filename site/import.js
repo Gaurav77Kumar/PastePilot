@@ -21,29 +21,38 @@
   const howEl = document.getElementById('how');
 
   let raw = '';
-  try { raw = decodeURIComponent(location.hash.replace(/^#pp=/, '')); }
-  catch (e) { raw = location.hash.replace(/^#pp=/, ''); }
+  try { raw = decodeURIComponent(location.hash.replace(/^#(pp|pack)=/, '')); }
+  catch (e) { raw = location.hash.replace(/^#(pp|pack)=/, ''); }
+  const isPack = location.hash.startsWith('#pack=');
 
   let snip = null;
+  let pack = null;
   try {
     const o = JSON.parse(fromB64Url(raw));
     if (o && o.v === 1 && typeof o.body === 'string' && o.body.trim()) snip = o;
+    else if (o && o.v === 1 && o.type === 'pack' && Array.isArray(o.snippets) && o.snippets.length) pack = o;
   } catch (e) { snip = null; }
 
-  if (!snip) {
-    titleEl.textContent = 'No snippet in this link';
+  if (!snip && !pack) {
+    titleEl.textContent = isPack ? 'No pack in this link' : 'No snippet in this link';
     bodyEl.textContent = 'This import link is missing its data. Ask the sender for a fresh share link — or open PastePilot and share one yourself.';
     copyBtn.style.display = 'none';
     howEl.style.display = 'none';
     return;
   }
 
-  titleEl.textContent = snip.title || 'Shared snippet';
-  bodyEl.textContent = snip.body;
-  const bits = [];
-  if (Array.isArray(snip.tags) && snip.tags.length) bits.push(snip.tags.join(', '));
-  if (Array.isArray(snip.sites) && snip.sites.length) bits.push('for ' + snip.sites.join(', '));
-  metaEl.textContent = bits.join(' · ');
+  if (pack) {
+    titleEl.textContent = pack.name || 'Snippet pack';
+    metaEl.textContent = pack.snippets.length + ' snippet' + (pack.snippets.length === 1 ? '' : 's');
+    bodyEl.textContent = pack.snippets.map((s) => '• ' + (s.title || 'Untitled')).join('\n');
+  } else {
+    titleEl.textContent = snip.title || 'Shared snippet';
+    bodyEl.textContent = snip.body;
+    const bits = [];
+    if (Array.isArray(snip.tags) && snip.tags.length) bits.push(snip.tags.join(', '));
+    if (Array.isArray(snip.sites) && snip.sites.length) bits.push('for ' + snip.sites.join(', '));
+    metaEl.textContent = bits.join(' · ');
+  }
 
   copyBtn.addEventListener('click', async () => {
     try {

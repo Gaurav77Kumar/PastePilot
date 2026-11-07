@@ -2,6 +2,7 @@
 
 import { snippetsForSite, snippetMatchesSite, hostFromUrl } from '../lib/rules.js';
 import { resolveVars, splitCursor, extractAsks, substituteAsks } from '../lib/variables.js';
+import { decryptText } from '../lib/vault.js';
 import { readSnippets, writeSnippets, getProfile } from '../lib/storage.js';
 import { PROFILE_FIELDS, CORE_PROFILE_KEYS, getCustomFields, customFieldKeywords } from '../lib/identity.js';
 import { PP_FILL_FN, PP_FILL_ALL_FN } from '../lib/pagefill.js';
@@ -10,6 +11,12 @@ let ALL_SNIPPETS = [];
 let CURRENT_TAB = null;
 let CURRENT_URL = '';
 let PROFILE = {};
+let vaultPassCache = null; // { pass, until } — short-lived unlock cache
+
+function getVaultPass() {
+  if (vaultPassCache && vaultPassCache.until > Date.now()) return vaultPassCache.pass;
+  return null;
+}
 
 const listEl = document.getElementById('list');
 const searchEl = document.getElementById('search');
@@ -208,7 +215,74 @@ function renderAskForm(asks, prefilled, onDone) {
   });
 }
 
+// Single passphrase prompt (password input) rendered in place of the list.
+function renderPassPrompt(s, onDone) {
+  const wrap = document.createElement('div');
+  wrap.className = 'pp-ask-form';
+  const head = document.createElement('div');
+  head.className = 'pp-ask-head';
+  head.textContent = '🔒 Vault snippet';
+  const lab = document.createElement('label');
+  lab.className = 'pp-ask-field';
+  lab.textContent = 'Passphrase';
+  const input = document.createElement('input');
+  input.type = 'password';
+  input.placeholder = 'Vault passphrase';
+  lab.appendChild(input);
+  const actions = document.createElement('div');
+  actions.className = 'pp-ask-actions';
+  const fillBtn = document.createElement('button');
+  fillBtn.className = 'pp-btn pp-btn-ink';
+  fillBtn.textContent = 'Unlock & fill';
+  const cancelBtn = document.createElement('button');
+  cancelBtn.className = 'pp-btn pp-btn-ghost';
+  cancelBtn.textContent = 'Cancel';
+  actions.append(fillBtn, cancelBtn);
+  wrap.append(head, lab, actions);
+  listEl.innerHTML = '';
+  listEl.appendChild(wrap);
+  input.focus();
+  const submit = async () => {
+    const pass = input.value;
+    if (!pass) return;
+    let plain;
+    try {
+      plain = await decryptText(pass, s.vault);
+    } catch (e) {
+      toast('Wrong passphrase', 'err');
+      input.value = '';
+      input.focus();
+      return;
+    }
+    vaultPassCache = { pass, until: Date.now() + 5 * 60 * 1000 };
+    onDone(plain);
+  };
+  fillBtn.addEventListener('click', submit);
+  cancelBtn.addEventListener('click', () => render());
+  wrap.addEventListener('keydown', (e) => {
+    if (e.key === 'Enter') { e.preventDefault(); submit(); }
+    if (e.key === 'Escape') { e.stopPropagation(); render(); }
+  });
+}
+
 async function fillSnippet(s) {
+  // Vault snippets unlock with the passphrase, then fill their plaintext.
+  if (s.vault) {
+    const cached = getVaultPass();
+    if (cached) {
+      try {
+        const plain = await decryptText(cached, s.vault);
+        await fillResolved(plain, s);
+        return;
+      } catch (e) {
+        vaultPassCache = null; // stale — prompt again
+      }
+    }
+    renderPassPrompt(s, async (plain) => {
+      await fillResolved(plain, s);
+    });
+    return;
+  }
   let body = s.body;
   if (/\{\{\s*clipboard\s*\}\}/i.test(body)) {
     const clip = await getClipboard();
@@ -275,10 +349,10 @@ async function executeFillAll(mapping) {
   }
 }
 
-// Snippets with {{ask:}} blanks can't go through fill-all (they need their
-// prompt first) — they're skipped and counted for the toast.
+// Snippets with {{ask:}} blanks or vault encryption can't go through fill-all
+// (they need their prompt first) — they're skipped and counted for the toast.
 function splitAskSnips(snips) {
-  const usable = snips.filter((s) => !extractAsks(s.body).length);
+  const usable = snips.filter((s) => !extractAsks(s.body).length && !s.vault);
   return { usable, skipped: snips.length - usable.length };
 }
 
@@ -287,7 +361,7 @@ async function fillAll() {
     .filter((s) => s.keywords && s.keywords.trim());
   const { usable, skipped } = splitAskSnips(all);
   if (!usable.length) {
-    toast(skipped ? 'Snippet has {{ask:}} blanks — click it individually instead' : 'Add "auto-fill keywords" to snippets in Manage first', 'err');
+    toast(skipped ? 'That snippet needs its passphrase/blanks — click it individually instead' : 'Add "auto-fill keywords" to snippets in Manage first', 'err');
     return;
   }
   const mapping = usable.map((s) => ({
@@ -326,7 +400,7 @@ async function fillMyDetails() {
   const out = await executeFillAll([...identityMap, ...snippetMap]);
   if (!out) { toast("Can't fill this page (restricted)", 'err'); return; }
   if (out.filled > 0) {
-    const extra = skipped ? ` (${skipped} with blanks skipped)` : '';
+    const extra = skipped ? ` (${skipped} skipped — blanks/vault)` : '';
     toast(`Filled ${out.filled} field${out.filled > 1 ? 's' : ''} ✓${extra}`, 'ok');
   } else {
     toast('No matching empty fields found on this page', 'err');

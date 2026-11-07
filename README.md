@@ -38,6 +38,9 @@ you're on, the right snippet is always at the top of the list.
 - **Fill-in-the-blanks** — `{{ask:Company}}` prompts you for values when the
   snippet is filled (recent answers remembered); one template replaces ten copies
 - **★ Favorites** — pin the snippets you use most; they always sit at the top
+- **🔒 Vault snippets** — encrypt sensitive snippets (bank details, IDs) with a
+  passphrase. Stored encrypted, filled on demand — plaintext never touches storage
+- **📦 Pack links** — share several snippets (or your whole setup) as one link
 - **Share snippets as a link** — copy a link to any snippet; recipients preview it
   and import it with one paste. Zero servers: the snippet rides inside the link
 - **Private by design** — no accounts, no servers, no analytics. Data lives in
@@ -89,9 +92,14 @@ PastePilot → **⤵ Import shared** → paste → done. The snippet is encoded 
 the link's fragment, so there are no accounts, no servers and no tracking — the
 data simply travels with the URL you choose to send.
 
+Need to send more than one? **📦 Pack** builds a single link for any selection
+of snippets — vault snippets stay home (they can't travel, by design).
+
 ## Privacy
 
 PastePilot collects **nothing**. It requests only `activeTab`, `contextMenus`,
 `scripting` and `storage` — no broad host permissions, no background page
-access, no remote code. Snippets never leave your browser. Full policy:
-[docs/privacy-policy.md](docs/privacy-policy.md).
+access, no remote code. Snippets never leave your browser. Vault snippets are
+encrypted in your browser with AES-GCM using a passphrase only you know — the
+passphrase is never stored or transmitted, and there is no server that could
+be breached. Full policy: [docs/privacy-policy.md](docs/privacy-policy.md).
