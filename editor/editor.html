@@ -23,6 +23,7 @@
       </nav>
     </div>
     <div class="ed-actions" id="snippetActions">
+      <button id="packBtn" class="ed-btn" title="Share several snippets as one link">📦 Pack</button>
       <button id="pasteImportBtn" class="ed-btn" title="Import a snippet someone shared with you">⤵ Import shared</button>
       <button id="newBtn" class="ed-btn ed-btn-primary">+ New snippet</button>
     </div>
@@ -34,6 +35,16 @@
     <div class="ed-import-actions">
       <button id="importApplyBtn" class="ed-btn ed-btn-primary">Import</button>
       <button id="importCancelBtn" class="ed-btn">Cancel</button>
+    </div>
+  </div>
+
+  <div id="packPanel" hidden>
+    <label for="packName">Pack name</label>
+    <input id="packName" type="text" placeholder="e.g. My job-application pack">
+    <div id="packList"></div>
+    <div class="ed-import-actions">
+      <button id="packCopyBtn" class="ed-btn ed-btn-primary">Copy pack link</button>
+      <button id="packCancelBtn" class="ed-btn">Cancel</button>
     </div>
   </div>
 
@@ -88,6 +99,7 @@
           <button id="saveBtn" class="ed-btn ed-btn-primary">Save snippet</button>
           <button id="favBtn" class="ed-btn" title="Pin this snippet to the top of your list">☆ Favorite</button>
           <button id="shareBtn" class="ed-btn" title="Copy a share link for this snippet — no account needed">🔗 Share</button>
+          <button id="vaultBtn" class="ed-btn" title="Encrypt this snippet with a passphrase — stored locally, filled on demand">🔒 Vault</button>
           <button id="deleteBtn" class="ed-btn ed-btn-danger">Delete</button>
           <span id="savedMsg" class="ed-saved" hidden>Saved ✓</span>
         </div>
