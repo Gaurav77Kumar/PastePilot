@@ -1,12 +1,25 @@
 
 import { readSnippets, writeSnippets, getProfile, saveProfile } from '../lib/storage.js';
 import { PROFILE_FIELDS, PROFILE_TEXTAREAS, getCustomFields } from '../lib/identity.js';
-import { encodeShare, decodeShare } from '../lib/share.js';
+import { encodeShare, decodeShare, encodePack, decodePack } from '../lib/share.js';
+import { encryptText, decryptText } from '../lib/vault.js';
 
 // Where shared-snippet links point. The page at /site/import.html is served
 // by GitHub Pages once enabled; it previews the snippet and hands the data
 // over via the editor's "⤵ Import shared" paste box.
 const SHARE_URL_BASE = 'https://gaurav77kumar.github.io/PastePilot/site/import.html#pp=';
+const PACK_URL_BASE = 'https://gaurav77kumar.github.io/PastePilot/site/import.html#pack=';
+
+// Vault session state: which snippet's plaintext is in the textarea, and the
+// passphrase used (5-minute TTL — fill prompts keep their own short cache).
+let revealedSnippetId = null;
+let revealedPlain = null;
+let vaultPassCache = null;
+
+function vaultPass() {
+  if (vaultPassCache && vaultPassCache.until > Date.now()) return vaultPassCache.pass;
+  return null;
+}
 
 let snippets = [];
 let currentId = null;
@@ -25,7 +38,8 @@ const els = {
   fKeywords: document.getElementById('fKeywords'),
   charCount: document.getElementById('charCount'),
   savedMsg: document.getElementById('savedMsg'),
-  fav: document.getElementById('favBtn')
+  fav: document.getElementById('favBtn'),
+  vault: document.getElementById('vaultBtn')
 };
 
 function uid() {
@@ -90,10 +104,32 @@ function addImportedSnippet(data) {
     createdAt: Date.now()
   };
   snippets.unshift(s);
-  dirty = true;
   selectSnippet(s.id);
+  dirty = true;
   els.fTitle.focus();
   els.fTitle.select();
+  return s;
+}
+
+// Bulk import from a pack: one unshift, first snippet selected.
+function importPackSnippets(pack) {
+  const now = Date.now();
+  const created = pack.snippets.map((sn, i) => ({
+    id: uid(),
+    title: sn.title,
+    body: sn.body,
+    tags: sn.tags,
+    sites: sn.sites,
+    keywords: sn.keywords,
+    usageCount: 0,
+    lastUsed: 0,
+    createdAt: now + i
+  }));
+  snippets.unshift(...created);
+  renderSidebar();
+  selectSnippet(created[0].id);
+  dirty = true;
+  alert(`Imported ${created.length} snippet${created.length === 1 ? '' : 's'} from "${pack.name}". Review and save them.`);
 }
 
 function renderSidebar() {
@@ -121,6 +157,28 @@ function updateFavBtn(s) {
   els.fav.textContent = s && s.favorite ? '★ Favorited' : '☆ Favorite';
 }
 
+// Applies the locked/revealed UI for vault snippets (no-op for normal ones).
+function refreshVaultUi(s) {
+  if (!s || !s.vault) {
+    els.fBody.readOnly = false;
+    els.fBody.classList.remove('ed-vaulted');
+    els.fBody.placeholder = 'The text that gets filled. Use the variable buttons above.';
+    els.vault.textContent = '🔒 Vault';
+    return;
+  }
+  if (revealedSnippetId === s.id && els.fBody.value) {
+    els.fBody.readOnly = false;
+    els.fBody.placeholder = '';
+    els.vault.textContent = '🔒 Re-lock';
+    return;
+  }
+  els.fBody.readOnly = true;
+  els.fBody.classList.add('ed-vaulted');
+  els.fBody.value = '';
+  els.fBody.placeholder = '🔒 Encrypted at rest — click 🔓 Reveal to view';
+  els.vault.textContent = '🔓 Reveal';
+}
+
 function selectSnippet(id) {
   currentId = id;
   dirty = false;
@@ -128,13 +186,17 @@ function selectSnippet(id) {
   els.editorPane.hidden = !s;
   els.emptyPane.hidden = !!s;
   updateFavBtn(s);
-  if (!s) return;
+  if (!s) {
+    refreshVaultUi(null);
+    return;
+  }
   els.fTitle.value = s.title || '';
   els.fBody.value = s.body || '';
   els.fTags.value = (s.tags || []).join(', ');
   els.fSites.value = (s.sites || []).join(', ');
   els.fKeywords.value = s.keywords || '';
   els.charCount.textContent = (s.body || '').length;
+  refreshVaultUi(s);
   renderSidebar();
 }
 
@@ -162,11 +224,43 @@ async function saveSnippet() {
   if (!s) return;
   if (!els.fTitle.value.trim()) { alert('Please give the snippet a title.'); return; }
   s.title = els.fTitle.value.trim();
-  s.body = els.fBody.value;
   s.tags = els.fTags.value.split(',').map((t) => t.trim()).filter(Boolean);
   s.sites = els.fSites.value.split(',').map((t) => t.trim()).filter(Boolean);
   if (!s.sites.length) s.sites = ['*'];
   s.keywords = els.fKeywords.value.trim();
+
+  if (s.vault) {
+    // Plaintext never persists — revealed edits are re-encrypted on save.
+    if (revealedSnippetId === s.id) {
+      const plain = els.fBody.value;
+      if (!plain.trim()) {
+        if (!confirm('The content is empty. Remove the vault and save as a normal snippet?')) return;
+        delete s.vault;
+        s.body = '';
+        revealedSnippetId = null;
+        revealedPlain = null;
+      } else if (plain !== revealedPlain) {
+        let pass = vaultPass();
+        if (!pass) {
+          const p = prompt('Passphrase to re-encrypt your changes:');
+          if (p === null) return;
+          pass = p;
+        }
+        try {
+          s.vault = await encryptText(pass, plain);
+        } catch (e) {
+          alert('Re-encryption failed: ' + e.message);
+          return;
+        }
+        vaultPassCache = { pass, until: Date.now() + 5 * 60 * 1000 };
+        revealedPlain = plain;
+      }
+      s.body = '';
+    }
+  } else {
+    s.body = els.fBody.value;
+  }
+
   dirty = false;
   await writeSnippets(snippets);
   showSaved();
@@ -203,9 +297,97 @@ els.fav.addEventListener('click', async () => {
   showSaved();
 });
 
+// ---- Vault (passphrase-encrypted snippets) ----------------------------------
+
+els.vault.addEventListener('click', async () => {
+  const s = currentSnippet();
+  if (!s) return;
+
+  if (!s.vault) {
+    // Vault it now: encrypt the current content, store no plaintext.
+    const body = els.fBody.value;
+    if (!body.trim()) { alert('Write the snippet content first, then vault it.'); return; }
+    const pass = prompt('Set a passphrase for this snippet (you will need it every time you fill it):');
+    if (pass === null) return;
+    if (!pass.trim()) { alert('Passphrase cannot be empty.'); return; }
+    const pass2 = prompt('Repeat the passphrase:');
+    if (pass2 === null) return;
+    if (pass !== pass2) { alert('Passphrases do not match.'); return; }
+    try {
+      s.vault = await encryptText(pass, body);
+    } catch (e) {
+      alert('Encryption failed: ' + e.message);
+      return;
+    }
+    s.body = '';
+    revealedSnippetId = null;
+    revealedPlain = null;
+    dirty = false;
+    await writeSnippets(snippets);
+    selectSnippet(s.id);
+    return;
+  }
+
+  if (revealedSnippetId === s.id) {
+    // Re-lock: re-encrypt if the revealed content was edited, then hide.
+    const plain = els.fBody.value;
+    if (plain !== revealedPlain) {
+      let pass = vaultPass();
+      if (!pass) {
+        const p = prompt('Passphrase to re-encrypt your changes:');
+        if (p === null) return;
+        pass = p;
+      }
+      try {
+        s.vault = await encryptText(pass, plain);
+      } catch (e) {
+        alert('Re-encryption failed: ' + e.message);
+        return;
+      }
+      vaultPassCache = { pass, until: Date.now() + 5 * 60 * 1000 };
+      revealedPlain = plain;
+    }
+    s.body = '';
+    revealedSnippetId = null;
+    dirty = false;
+    await writeSnippets(snippets);
+    selectSnippet(s.id);
+    return;
+  }
+
+  // Reveal: ask for the passphrase, show the plaintext (editable).
+  let pass = vaultPass();
+  if (!pass) {
+    const p = prompt('Passphrase to reveal this snippet:');
+    if (p === null) return;
+    pass = p;
+  }
+  let plain;
+  try {
+    plain = await decryptText(pass, s.vault);
+  } catch (e) {
+    alert('Wrong passphrase.');
+    return;
+  }
+  vaultPassCache = { pass, until: Date.now() + 5 * 60 * 1000 };
+  revealedSnippetId = s.id;
+  revealedPlain = plain;
+  els.fBody.readOnly = false;
+  els.fBody.classList.remove('ed-vaulted');
+  els.fBody.value = plain;
+  els.fBody.placeholder = '';
+  els.vault.textContent = '🔒 Re-lock';
+  els.charCount.textContent = plain.length;
+});
+
 // ---- Share (copy link) -----------------------------------------------------
 
 document.getElementById('shareBtn').addEventListener('click', async () => {
+  const current = currentSnippet();
+  if (current && current.vault) {
+    alert("Vault snippets can't be shared — that's the point 🙂");
+    return;
+  }
   const s = {
     title: els.fTitle.value.trim(),
     body: els.fBody.value,
@@ -232,11 +414,18 @@ const importPanel = document.getElementById('importPanel');
 const importText = document.getElementById('importText');
 
 function applyImport() {
-  const res = decodeShare(importText.value);
-  if (!res.ok) { alert('Import failed: ' + res.error); return; }
-  if (dirty && !confirm('Discard unsaved changes?')) return;
+  const single = decodeShare(importText.value);
+  if (single.ok) {
+    if (dirty && !confirm('Discard unsaved changes?')) return;
+    importPanel.hidden = true;
+    addImportedSnippet(single.snippet);
+    return;
+  }
+  const pack = decodePack(importText.value);
+  if (!pack.ok) { alert('Import failed: ' + single.error); return; }
+  if (dirty && !confirm(`Import ${pack.snippets.length} snippet${pack.snippets.length === 1 ? '' : 's'} and discard unsaved changes?`)) return;
   importPanel.hidden = true;
-  addImportedSnippet(res.snippet);
+  importPackSnippets(pack);
 }
 
 document.getElementById('pasteImportBtn').addEventListener('click', () => {
@@ -247,6 +436,56 @@ document.getElementById('importApplyBtn').addEventListener('click', applyImport)
 document.getElementById('importCancelBtn').addEventListener('click', () => { importPanel.hidden = true; });
 importText.addEventListener('keydown', (e) => {
   if ((e.ctrlKey || e.metaKey) && e.key === 'Enter') applyImport();
+});
+
+// ---- Pack links (multi-snippet share) --------------------------------------
+
+const packPanel = document.getElementById('packPanel');
+const packName = document.getElementById('packName');
+const packList = document.getElementById('packList');
+
+document.getElementById('packBtn').addEventListener('click', () => {
+  if (!snippets.length) { alert('No snippets to pack yet.'); return; }
+  packName.value = 'My PastePilot pack';
+  packList.innerHTML = '';
+  snippets.forEach((s) => {
+    const lab = document.createElement('label');
+    const cb = document.createElement('input');
+    cb.type = 'checkbox';
+    cb.checked = true;
+    cb.dataset.id = s.id;
+    if (s.vault) {
+      cb.disabled = true;
+      lab.classList.add('locked');
+      lab.append(cb, document.createTextNode('🔒 ' + (s.title || 'Untitled') + " — vault snippets can't travel"));
+    } else {
+      lab.append(cb, document.createTextNode((s.favorite ? '★ ' : '') + (s.title || 'Untitled')));
+    }
+    packList.appendChild(lab);
+  });
+  packPanel.hidden = false;
+});
+
+document.getElementById('packCancelBtn').addEventListener('click', () => { packPanel.hidden = true; });
+
+document.getElementById('packCopyBtn').addEventListener('click', async () => {
+  const chosen = snippets.filter((s) => {
+    const cb = packList.querySelector('input[data-id="' + s.id + '"]');
+    return cb && cb.checked && !cb.disabled;
+  });
+  if (!chosen.length) { alert("Select at least one snippet — vault snippets can't be packed."); return; }
+  const name = packName.value.trim() || 'My PastePilot pack';
+  const url = PACK_URL_BASE + encodePack(name, chosen);
+  const btn = document.getElementById('packCopyBtn');
+  try {
+    await navigator.clipboard.writeText(url);
+    const old = btn.textContent;
+    btn.textContent = '✓ Pack link copied!';
+    setTimeout(() => { btn.textContent = old; }, 1600);
+    packPanel.hidden = true;
+  } catch (e) {
+    alert('Copy failed — select and copy this link manually:\n\n' + url);
+  }
 });
 
 document.querySelectorAll('.ed-var').forEach((btn) => {
@@ -409,6 +648,11 @@ let currentProfile = {};
     try { data = decodeURIComponent(data); } catch (e) { /* already plain */ }
     const res = decodeShare(data);
     if (res.ok) addImportedSnippet(res.snippet);
+  } else if (location.hash.startsWith('#pack=')) {
+    let data = location.hash.slice(6);
+    try { data = decodeURIComponent(data); } catch (e) { /* already plain */ }
+    const pack = decodePack(data);
+    if (pack.ok) importPackSnippets(pack);
   } else if (params.get('welcome') === '1' && snippets.length) {
     selectSnippet(snippets[0].id);
   }
