@@ -31,6 +31,7 @@ Everything below is saved only in your browser's local extension storage (`chrom
 | `storage` | Saves your snippets, folders, preferences, and settings locally in your browser. |
 | `activeTab` | Allows PastePilot to interact only with the currently active webpage after you activate the extension. |
 | `scripting` | Injects the local snippet insertion script into the active page so the selected snippet can be pasted into supported input fields. |
+| `contextMenus` | Adds a right-click item, "Save selection as a PastePilot snippet", so you can capture text you want to reuse. The selected text goes to the extension's own editor and is stored locally — never sent anywhere. |
 
 ## Data removal
 
